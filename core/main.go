@@ -168,6 +168,7 @@ func Publish(session *client.Client, topic string, args []string, kwargs map[str
 
 		concurrentGoroutines := make(chan struct{}, concurrency)
 		var wg sync.WaitGroup
+		resC := make(chan error, repeatPublish)
 
 		var err error
 		for i := 0; i < repeatPublish; i++ {
@@ -177,13 +178,15 @@ func Publish(session *client.Client, topic string, args []string, kwargs map[str
 				err = actualPublish(session, topic, listToWampList(args), dictToWampDict(kwargs),
 					logPublishTime, delayPublish, &wg, dictToWampDict(publishOptions))
 				<-concurrentGoroutines
+				resC <- err
 			}()
-		}
-		if err != nil {
-			return err
 		}
 
 		wg.Wait()
+		err = getErrorFromErrorChannel(resC)
+		if err != nil {
+			return err
+		}
 	} else {
 		for i := 0; i < repeatPublish; i++ {
 			if err := actualPublish(session, topic, listToWampList(args), dictToWampDict(kwargs),
@@ -297,6 +300,7 @@ func Call(session *client.Client, procedure string, args []string, kwargs map[st
 	if concurrency > 1 {
 		concurrentGoroutines := make(chan struct{}, concurrency)
 		var wg sync.WaitGroup
+		resC := make(chan error, repeatCount)
 
 		var err error
 		for i := 0; i < repeatCount; i++ {
@@ -306,13 +310,15 @@ func Call(session *client.Client, procedure string, args []string, kwargs map[st
 				_, err = actuallyCall(session, procedure, listToWampList(args), dictToWampDict(kwargs),
 					logCallTime, delayCall, &wg, dictToWampDict(callOptions))
 				<-concurrentGoroutines
+				resC <- err
 			}()
 		}
 
+		wg.Wait()
+		err = getErrorFromErrorChannel(resC)
 		if err != nil {
 			return err
 		}
-		wg.Wait()
 	} else {
 		for i := 0; i < repeatCount; i++ {
 			if _, err := actuallyCall(session, procedure, listToWampList(args), dictToWampDict(kwargs), logCallTime, delayCall,

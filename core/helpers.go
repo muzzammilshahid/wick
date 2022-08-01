@@ -224,3 +224,17 @@ func sanitizeURL(url string) string {
 	}
 	return url
 }
+
+func getErrorFromErrorChannel(resC chan error) error {
+	close(resC)
+	var errs []string
+	for err := range resC {
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("- %v", err))
+		}
+	}
+	if len(errs) != 0 {
+		return fmt.Errorf("got errors:\n%v", strings.Join(errs, "\n"))
+	}
+	return nil
+}
