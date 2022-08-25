@@ -95,8 +95,8 @@ var (
 	concurrentCalls = call.Flag("concurrency", "Make concurrent calls without waiting for the result for each to return. "+
 		"Only effective when called with --repeat.").Default("1").Int()
 
-	keyGen     = kingpin.Command("keygen", "Generate public-private keypair.").Hidden()
-	saveToFile = keyGen.Flag("", "Write keys to file.").Short('o').Hidden().Bool()
+	keyGen     = kingpin.Command("keygen", "Generate ed25519 keypair.").Hidden()
+	saveToFile = keyGen.Flag("output-file", "Write keys to file.").Short('o').Hidden().Bool()
 )
 
 const versionString = "0.5.0"
