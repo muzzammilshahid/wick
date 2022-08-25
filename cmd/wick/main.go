@@ -247,7 +247,7 @@ func main() {
 				log.Fatalln(err)
 			}
 		} else {
-			log.Printf("Public Key: %s\nPrivate Key: %s\n", publicString, privateString)
+			fmt.Printf("Public Key: %s\nPrivate Key: %s\n", publicString, privateString)
 		}
 	}
 }
