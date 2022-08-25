@@ -236,7 +236,6 @@ func main() {
 		}
 		publicString := hex.EncodeToString(pub)
 		privateString := hex.EncodeToString(pri)
-		log.Printf("Public Key: %s\nPrivate Key: %s\n", publicString, privateString)
 
 		if *saveToFile {
 			err = ioutil.WriteFile("key", []byte(privateString), 0600)
@@ -247,6 +246,8 @@ func main() {
 			if err != nil {
 				log.Fatalln(err)
 			}
+		} else {
+			log.Printf("Public Key: %s\nPrivate Key: %s\n", publicString, privateString)
 		}
 	}
 }
