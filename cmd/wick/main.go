@@ -32,10 +32,10 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
-	"sync"
 	"time"
 
 	"github.com/gammazero/nexus/v3/client"
+	"github.com/gammazero/workerpool"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 
@@ -61,10 +61,7 @@ var (
 		Envar("WICK_TICKET").String()
 	serializer = kingpin.Flag("serializer", "The serializer to use.").Envar("WICK_SERIALIZER").
 			Default("json").Enum("json", "msgpack", "cbor")
-	profile           = kingpin.Flag("profile", "").Envar("WICK_PROFILE").String()
-	sessionCount      = kingpin.Flag("session-count", "Start n wamp sessions").Default("1").Int()
-	concurrentSession = kingpin.Flag("session-concurrency", "Create the session concurrently. "+
-		"Only effective when called with --session-count.").Default("1").Int()
+	profile = kingpin.Flag("profile", "").Envar("WICK_PROFILE").String()
 
 	subscribe             = kingpin.Command("subscribe", "Subscribe a topic.")
 	subscribeTopic        = subscribe.Arg("topic", "Topic to subscribe.").Required().String()
@@ -99,6 +96,7 @@ var (
 	callOptions     = call.Flag("option", "Procedure call option. (May be provided multiple times)").Short('o').StringMap()
 	concurrentCalls = call.Flag("concurrency", "Make concurrent calls without waiting for the result for each to return. "+
 		"Only effective when called with --repeat.").Default("1").Int()
+	callSessionCount = call.Flag("parallel", "Start n wamp sessions").Default("1").Int()
 
 	keyGen     = kingpin.Command("keygen", "Generate ed25519 keypair.").Hidden()
 	saveToFile = keyGen.Flag("output-file", "Write keys to file.").Short('o').Hidden().Bool()
@@ -163,37 +161,21 @@ func connect() (*client.Client, error) {
 	return session, err
 }
 
-func getSessions() ([]*client.Client, error) {
+func getSessions(sessionCount int, concurrency int) ([]*client.Client, error) {
 	var sessions []*client.Client
-	if *concurrentSession > 1 {
-		concurrentGoroutines := make(chan struct{}, *concurrentSession)
-		var wg sync.WaitGroup
-		resC := make(chan error, *sessionCount)
-		for i := 0; i < *sessionCount; i++ {
-			wg.Add(1)
-			concurrentGoroutines <- struct{}{}
-			go func() {
-				defer wg.Done()
-				session, err := connect()
-				sessions = append(sessions, session)
-				<-concurrentGoroutines
-				resC <- err
-			}()
-		}
-
-		wg.Wait()
-		err := getErrorFromErrorChannel(resC)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		for i := 0; i < *sessionCount; i++ {
+	wp := workerpool.New(concurrency)
+	resC := make(chan error, sessionCount)
+	for i := 0; i < sessionCount; i++ {
+		wp.Submit(func() {
 			session, err := connect()
-			if err != nil {
-				return nil, err
-			}
 			sessions = append(sessions, session)
-		}
+			resC <- err
+		})
+	}
+
+	wp.StopWait()
+	if err := getErrorFromErrorChannel(resC); err != nil {
+		return nil, err
 	}
 	return sessions, nil
 }
@@ -221,96 +203,73 @@ func main() {
 
 	switch cmd {
 	case subscribe.FullCommand():
-		sessions, err := getSessions()
+		session, err := connect()
 		if err != nil {
 			log.Fatalln(err)
 		}
-		defer func() {
-			for _, sess := range sessions {
-				sess.Close()
-			}
-		}()
-
-		for _, session := range sessions {
-			err = core.Subscribe(session, *subscribeTopic, *subscribeOptions, *subscribePrintDetails)
-			if err != nil {
-				log.Fatalln(err)
-			}
+		defer session.Close()
+		if err = core.Subscribe(session, *subscribeTopic, *subscribeOptions, *subscribePrintDetails); err != nil {
+			log.Fatalln(err)
 		}
+
 		// Wait for CTRL-c or client close while handling events.
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, os.Interrupt)
-		for _, session := range sessions {
-			select {
-			case <-sigChan:
-				for _, sess := range sessions {
-					sess.Close()
-				}
-			case <-session.Done():
-				log.Print("exiting")
-			}
-			// Unsubscribe from topic.
-			session.Unsubscribe(*subscribeTopic)
+		select {
+		case <-sigChan:
+		case <-session.Done():
+			log.Print("Router gone, exiting")
 		}
+		// Unsubscribe from topic.
+		session.Unsubscribe(*subscribeTopic)
 
 	case publish.FullCommand():
 		if *repeatPublish < 1 {
 			log.Fatalln("repeat count must be greater than zero")
 		}
-		sessions, err := getSessions()
+		session, err := connect()
 		if err != nil {
 			log.Fatalln(err)
 		}
-		defer func() {
-			for _, sess := range sessions {
-				sess.Close()
-			}
-		}()
-		for _, session := range sessions {
-			err = core.Publish(session, *publishTopic, *publishArgs, *publishKeywordArgs, *publishOptions, *logPublishTime,
-				*repeatPublish, *delayPublish, *concurrentPublish)
-			if err != nil {
-				log.Fatalln(err)
-			}
+		if err = core.Publish(session, *publishTopic, *publishArgs, *publishKeywordArgs, *publishOptions, *logPublishTime,
+			*repeatPublish, *delayPublish, *concurrentPublish); err != nil {
+			log.Fatalln(err)
 		}
 	case register.FullCommand():
-		sessions, err := getSessions()
+		session, err := connect()
 		if err != nil {
 			log.Fatalln(err)
 		}
-		defer func() {
-			for _, sess := range sessions {
-				sess.Close()
-			}
-		}()
-		for _, session := range sessions {
-			err = core.Register(session, *registerProcedure, *onInvocationCmd, *delay, *invokeCount, *registerOptions)
-			if err != nil {
-				log.Fatalln(err)
-			}
+		if err = core.Register(session, *registerProcedure, *onInvocationCmd, *delay, *invokeCount, *registerOptions); err != nil {
+			log.Fatalln(err)
 		}
+
 		// Wait for CTRL-c or client close while handling events.
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, os.Interrupt)
-		for _, session := range sessions {
-			select {
-			case <-sigChan:
-				for _, sess := range sessions {
-					sess.Close()
-				}
-			case <-session.Done():
-				log.Print("exiting")
-			}
-			// Unregister procedure.
-			session.Unregister(*registerProcedure)
+		select {
+		case <-sigChan:
+		case <-session.Done():
+			log.Print("Router gone, exiting")
 		}
+		// Unregister procedure.
+		session.Unregister(*registerProcedure)
+
 	case call.FullCommand():
+		var startTime int64
 		if *repeatCount < 1 {
 			log.Fatalln("repeat count must be greater than zero")
 		}
-		sessions, err := getSessions()
+		if *logCallTime {
+			startTime = time.Now().UnixMilli()
+		}
+		sessions, err := getSessions(*callSessionCount, *concurrentCalls)
 		if err != nil {
 			log.Fatalln(err)
+		}
+		if *logCallTime {
+			endTime := time.Now().UnixMilli()
+			log.Printf("%v sessions joined in %dms\n", *callSessionCount, endTime-startTime)
 		}
 		defer func() {
 			for _, sess := range sessions {
