@@ -277,18 +277,15 @@ func main() {
 			}
 		}()
 		wp := workerpool.New(*concurrentCalls)
-		resC := make(chan error, *callSessionCount)
 		for _, session := range sessions {
 			wp.Submit(func() {
-				err = core.Call(session, *callProcedure, *callArgs, *callKeywordArgs, *logCallTime, *repeatCount, *delayCall,
-					*concurrentCalls, *callOptions)
-				resC <- err
+				if err = core.Call(session, *callProcedure, *callArgs, *callKeywordArgs, *logCallTime, *repeatCount, *delayCall,
+					*concurrentCalls, *callOptions); err != nil {
+					log.Fatalln(err)
+				}
 			})
 		}
 		wp.StopWait()
-		if err = getErrorFromErrorChannel(resC); err != nil {
-			log.Fatalln(err)
-		}
 
 	case keyGen.FullCommand():
 		pub, pri, err := ed25519.GenerateKey(rand.Reader)
