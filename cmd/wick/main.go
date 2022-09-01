@@ -78,7 +78,7 @@ var (
 	delayPublish       = publish.Flag("delay", "Provide the delay in milliseconds.").Default("0").Int()
 	concurrentPublish  = publish.Flag("concurrency", "Publish to the topic concurrently. "+
 		"Only effective when called with --repeat.").Default("1").Int()
-	publishSessionCount = publish.Flag("parallel", "Start n wamp sessions").Default("1").Int()
+	publishSessionCount = publish.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
 
 	register          = kingpin.Command("register", "Register a procedure.")
 	registerProcedure = register.Arg("procedure", "Procedure name.").Required().String()
@@ -97,7 +97,7 @@ var (
 	callOptions     = call.Flag("option", "Procedure call option. (May be provided multiple times)").Short('o').StringMap()
 	concurrentCalls = call.Flag("concurrency", "Make concurrent calls without waiting for the result for each to return. "+
 		"Only effective when called with --repeat.").Default("1").Int()
-	callSessionCount = call.Flag("parallel", "Start n wamp sessions").Default("1").Int()
+	callSessionCount = call.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
 
 	keyGen     = kingpin.Command("keygen", "Generate ed25519 keypair.").Hidden()
 	saveToFile = keyGen.Flag("output-file", "Write keys to file.").Short('o').Hidden().Bool()
