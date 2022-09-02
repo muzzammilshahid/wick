@@ -63,6 +63,10 @@ var (
 			Default("json").Enum("json", "msgpack", "cbor")
 	profile = kingpin.Flag("profile", "").Envar("WICK_PROFILE").String()
 
+	join             = kingpin.Command("join-only", "Start wamp session.")
+	joinSessionCount = join.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
+	concurrentJoin   = join.Flag("concurrency", "Start wamp session concurrently").Default("1").Int()
+
 	subscribe             = kingpin.Command("subscribe", "Subscribe a topic.")
 	subscribeTopic        = subscribe.Arg("topic", "Topic to subscribe.").Required().String()
 	subscribeOptions      = subscribe.Flag("option", "Subscribe option. (May be provided multiple times)").Short('o').StringMap()
@@ -203,6 +207,31 @@ func main() {
 	}
 
 	switch cmd {
+	case join.FullCommand():
+		if *joinSessionCount < 0 {
+			log.Fatalln("parallel must be greater than zero")
+		}
+		sessions, err := getSessions(*joinSessionCount, *concurrentJoin, false)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		defer func() {
+			for _, sess := range sessions {
+				sess.Close()
+			}
+		}()
+		// Wait for CTRL-c or client close while handling events.
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt)
+		for _, session := range sessions {
+			select {
+			case <-sigChan:
+				return
+			case <-session.Done():
+				log.Print("Router gone, exiting")
+			}
+		}
+
 	case subscribe.FullCommand():
 		session, err := connect(false)
 		if err != nil {
