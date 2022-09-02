@@ -66,6 +66,7 @@ var (
 	join             = kingpin.Command("join-only", "Start wamp session.")
 	joinSessionCount = join.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
 	concurrentJoin   = join.Flag("concurrency", "Start wamp session concurrently").Default("1").Int()
+	logJoinTime      = join.Flag("time", "Log session join time").Bool()
 
 	subscribe             = kingpin.Command("subscribe", "Subscribe a topic.")
 	subscribeTopic        = subscribe.Arg("topic", "Topic to subscribe.").Required().String()
@@ -208,12 +209,20 @@ func main() {
 
 	switch cmd {
 	case join.FullCommand():
+		var startTime int64
 		if *joinSessionCount < 0 {
 			log.Fatalln("parallel must be greater than zero")
 		}
-		sessions, err := getSessions(*joinSessionCount, *concurrentJoin, false)
+		if *logJoinTime {
+			startTime = time.Now().UnixMilli()
+		}
+		sessions, err := getSessions(*joinSessionCount, *concurrentJoin, *logJoinTime)
 		if err != nil {
 			log.Fatalln(err)
+		}
+		if *logJoinTime {
+			endTime := time.Now().UnixMilli()
+			log.Printf("%v sessions joined in %dms\n", *joinSessionCount, endTime-startTime)
 		}
 		defer func() {
 			for _, sess := range sessions {
