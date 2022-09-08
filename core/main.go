@@ -28,12 +28,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/transport/serialize"
 	"github.com/gammazero/nexus/v3/wamp"
+	"github.com/gammazero/workerpool"
 	"github.com/sirupsen/logrus"
 )
 
@@ -119,10 +119,7 @@ func Subscribe(session *client.Client, topic string, subscribeOptions map[string
 }
 
 func actualPublish(session *client.Client, topic string, args wamp.List, kwargs wamp.Dict, logPublishTime bool,
-	delayPublish int, group *sync.WaitGroup, publishOptions wamp.Dict) error {
-	if group != nil {
-		defer group.Done()
-	}
+	delayPublish int, publishOptions wamp.Dict) error {
 	if delayPublish > 0 {
 		time.Sleep(time.Duration(delayPublish) * time.Millisecond)
 	}
@@ -136,53 +133,37 @@ func actualPublish(session *client.Client, topic string, args wamp.List, kwargs 
 	if err := session.Publish(topic, publishOptions, args, kwargs); err != nil {
 		return err
 	}
-	logger.Printf("Published to topic '%s'\n", topic)
 
 	if logPublishTime {
 		endTime := time.Now().UnixMilli()
-		logger.Printf("call took %dms\n", endTime-startTime)
+		logger.Printf("Published to topic %s in %dms\n", topic, endTime-startTime)
+	} else {
+		logger.Printf("Published to topic '%s'\n", topic)
 	}
 	return nil
 }
 
 func Publish(session *client.Client, topic string, args []string, kwargs map[string]string, publishOptions map[string]string,
 	logPublishTime bool, repeatPublish int, delayPublish int, concurrency int) error {
-
 	var startTime int64
 	if logPublishTime {
 		startTime = time.Now().UnixMilli()
 	}
 
-	if concurrency > 1 {
+	wp := workerpool.New(concurrency)
+	resC := make(chan error, repeatPublish)
+	for i := 0; i < repeatPublish; i++ {
+		wp.Submit(func() {
+			err := actualPublish(session, topic, listToWampList(args), dictToWampDict(kwargs),
+				logPublishTime, delayPublish, dictToWampDict(publishOptions))
+			resC <- err
+		})
+	}
+	wp.StopWait()
 
-		concurrentGoroutines := make(chan struct{}, concurrency)
-		var wg sync.WaitGroup
-		resC := make(chan error, repeatPublish)
-
-		var err error
-		for i := 0; i < repeatPublish; i++ {
-			wg.Add(1)
-			concurrentGoroutines <- struct{}{}
-			go func() {
-				err = actualPublish(session, topic, listToWampList(args), dictToWampDict(kwargs),
-					logPublishTime, delayPublish, &wg, dictToWampDict(publishOptions))
-				<-concurrentGoroutines
-				resC <- err
-			}()
-		}
-
-		wg.Wait()
-		err = getErrorFromErrorChannel(resC)
-		if err != nil {
-			return err
-		}
-	} else {
-		for i := 0; i < repeatPublish; i++ {
-			if err := actualPublish(session, topic, listToWampList(args), dictToWampDict(kwargs),
-				logPublishTime, delayPublish, nil, dictToWampDict(publishOptions)); err != nil {
-				return err
-			}
-		}
+	err := getErrorFromErrorChannel(resC)
+	if err != nil {
+		return err
 	}
 
 	if logPublishTime && repeatPublish > 1 {
@@ -224,12 +205,7 @@ func Register(session *client.Client, procedure string, command string, delay in
 }
 
 func actuallyCall(session *client.Client, procedure string, args wamp.List, kwargs wamp.Dict,
-	logCallTime bool, delayCall int, group *sync.WaitGroup, callOptions wamp.Dict) (*wamp.Result, error) {
-
-	if group != nil {
-		defer group.Done()
-	}
-
+	logCallTime bool, delayCall int, callOptions wamp.Dict) (*wamp.Result, error) {
 	if delayCall > 0 {
 		time.Sleep(time.Duration(delayCall) * time.Millisecond)
 	}
@@ -267,47 +243,31 @@ func actuallyCall(session *client.Client, procedure string, args wamp.List, kwar
 
 func Call(session *client.Client, procedure string, args []string, kwargs map[string]string,
 	logCallTime bool, repeatCount int, delayCall int, concurrency int, callOptions map[string]string) error {
-
 	var startTime int64
 	if logCallTime {
 		startTime = time.Now().UnixMilli()
 	}
 
-	if concurrency > 1 {
-		concurrentGoroutines := make(chan struct{}, concurrency)
-		var wg sync.WaitGroup
-		resC := make(chan error, repeatCount)
+	wp := workerpool.New(concurrency)
+	resC := make(chan error, repeatCount)
 
-		var err error
-		for i := 0; i < repeatCount; i++ {
-			wg.Add(1)
-			concurrentGoroutines <- struct{}{}
-			go func() {
-				_, err = actuallyCall(session, procedure, listToWampList(args), dictToWampDict(kwargs),
-					logCallTime, delayCall, &wg, dictToWampDict(callOptions))
-				<-concurrentGoroutines
-				resC <- err
-			}()
-		}
+	for i := 0; i < repeatCount; i++ {
+		wp.Submit(func() {
+			_, err := actuallyCall(session, procedure, listToWampList(args), dictToWampDict(kwargs),
+				logCallTime, delayCall, dictToWampDict(callOptions))
+			resC <- err
+		})
+	}
+	wp.StopWait()
 
-		wg.Wait()
-		err = getErrorFromErrorChannel(resC)
-		if err != nil {
-			return err
-		}
-	} else {
-		for i := 0; i < repeatCount; i++ {
-			if _, err := actuallyCall(session, procedure, listToWampList(args), dictToWampDict(kwargs), logCallTime, delayCall,
-				nil, dictToWampDict(callOptions)); err != nil {
-				return err
-			}
-		}
+	err := getErrorFromErrorChannel(resC)
+	if err != nil {
+		return err
 	}
 
 	if logCallTime && repeatCount > 1 {
 		endTime := time.Now().UnixMilli()
 		logger.Printf("%d calls took %dms\n", repeatCount, endTime-startTime)
 	}
-
 	return nil
 }

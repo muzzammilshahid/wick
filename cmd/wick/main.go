@@ -226,6 +226,7 @@ func main() {
 		if *joinSessionCount < 0 {
 			log.Fatalln("parallel must be greater than zero")
 		}
+
 		if *logJoinTime {
 			startTime = time.Now().UnixMilli()
 		}
@@ -237,11 +238,19 @@ func main() {
 			endTime := time.Now().UnixMilli()
 			log.Printf("%v sessions joined in %dms\n", *joinSessionCount, endTime-startTime)
 		}
+
 		defer func() {
+			wp := workerpool.New(len(sessions))
 			for _, sess := range sessions {
-				sess.Close()
+				s := sess
+				wp.Submit(func() {
+					// Close the connection to the router
+					s.Close()
+				})
 			}
+			wp.StopWait()
 		}()
+
 		// Wait for CTRL-c or client close while handling events.
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, os.Interrupt)
@@ -259,6 +268,7 @@ func main() {
 		if *subscribeSessionCount < 0 {
 			log.Fatalln("parallel must be greater than zero")
 		}
+
 		if *logSubscribeTime {
 			startTime = time.Now().UnixMilli()
 		}
@@ -316,6 +326,7 @@ func main() {
 		if *publishSessionCount < 0 {
 			log.Fatalln("parallel must be greater than zero")
 		}
+
 		if *logPublishTime {
 			startTime = time.Now().UnixMilli()
 		}
@@ -327,11 +338,19 @@ func main() {
 			endTime := time.Now().UnixMilli()
 			log.Printf("%v sessions joined in %dms\n", *publishSessionCount, endTime-startTime)
 		}
+
 		defer func() {
+			wp := workerpool.New(len(sessions))
 			for _, sess := range sessions {
-				sess.Close()
+				s := sess
+				wp.Submit(func() {
+					// Close the connection to the router
+					s.Close()
+				})
 			}
+			wp.StopWait()
 		}()
+
 		wp := workerpool.New(*concurrentPublish)
 		for _, session := range sessions {
 			sess := session
@@ -349,6 +368,7 @@ func main() {
 		if *registerSessionCount < 0 {
 			log.Fatalln("parallel must be greater than zero")
 		}
+
 		if *logRegisterTime {
 			startTime = time.Now().UnixMilli()
 		}
@@ -360,6 +380,7 @@ func main() {
 			endTime := time.Now().UnixMilli()
 			log.Printf("%v sessions joined in %dms\n", *registerSessionCount, endTime-startTime)
 		}
+
 		defer func() {
 			wp := workerpool.New(len(sessions))
 			for _, sess := range sessions {
@@ -405,6 +426,7 @@ func main() {
 		if *callSessionCount < 0 {
 			log.Fatalln("parallel must be greater than zero")
 		}
+
 		if *logCallTime {
 			startTime = time.Now().UnixMilli()
 		}
@@ -416,11 +438,19 @@ func main() {
 			endTime := time.Now().UnixMilli()
 			log.Printf("%v sessions joined in %dms\n", *callSessionCount, endTime-startTime)
 		}
+
 		defer func() {
+			wp := workerpool.New(len(sessions))
 			for _, sess := range sessions {
-				sess.Close()
+				s := sess
+				wp.Submit(func() {
+					// Close the connection to the router
+					s.Close()
+				})
 			}
+			wp.StopWait()
 		}()
+
 		wp := workerpool.New(*concurrentCalls)
 		for _, session := range sessions {
 			sess := session
