@@ -98,6 +98,7 @@ var (
 	delay              = register.Flag("delay", "Register procedure after delay.(in milliseconds)").Int()
 	invokeCount        = register.Flag("invoke-count", "Leave session after it's called requested times.").Int()
 	registerOptions    = register.Flag("option", "Procedure registration option. (May be provided multiple times)").Short('o').StringMap()
+	logRegisterTime    = register.Flag("time", "Log time to join session and register procedure.").Bool()
 	concurrentRegister = register.Flag("concurrency", "Register procedure concurrently. "+
 		"Only effective when called with --parallel.").Default("1").Int()
 	registerSessionCount = register.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
@@ -312,6 +313,9 @@ func main() {
 		if *repeatPublish < 1 {
 			log.Fatalln("repeat count must be greater than zero")
 		}
+		if *publishSessionCount < 0 {
+			log.Fatalln("parallel must be greater than zero")
+		}
 		if *logPublishTime {
 			startTime = time.Now().UnixMilli()
 		}
@@ -341,9 +345,20 @@ func main() {
 		wp.StopWait()
 
 	case register.FullCommand():
-		sessions, err := getSessions(*registerSessionCount, *concurrentRegister, false, *keepaliveRegister)
+		var startTime int64
+		if *registerSessionCount < 0 {
+			log.Fatalln("parallel must be greater than zero")
+		}
+		if *logRegisterTime {
+			startTime = time.Now().UnixMilli()
+		}
+		sessions, err := getSessions(*registerSessionCount, *concurrentRegister, *logRegisterTime, *keepaliveRegister)
 		if err != nil {
 			log.Fatalln(err)
+		}
+		if *logRegisterTime {
+			endTime := time.Now().UnixMilli()
+			log.Printf("%v sessions joined in %dms\n", *registerSessionCount, endTime-startTime)
 		}
 		defer func() {
 			wp := workerpool.New(len(sessions))
@@ -356,13 +371,14 @@ func main() {
 					s.Close()
 				})
 			}
+			wp.StopWait()
 		}()
 
 		wp := workerpool.New(*concurrentRegister)
 		for _, session := range sessions {
 			sess := session
 			wp.Submit(func() {
-				if err = core.Register(sess, *registerProcedure, *onInvocationCmd, *delay, *invokeCount, *registerOptions); err != nil {
+				if err = core.Register(sess, *registerProcedure, *onInvocationCmd, *delay, *invokeCount, *registerOptions, *logRegisterTime); err != nil {
 					log.Fatalln(err)
 				}
 			})
@@ -385,6 +401,9 @@ func main() {
 		var startTime int64
 		if *repeatCount < 1 {
 			log.Fatalln("repeat count must be greater than zero")
+		}
+		if *callSessionCount < 0 {
+			log.Fatalln("parallel must be greater than zero")
 		}
 		if *logCallTime {
 			startTime = time.Now().UnixMilli()
