@@ -251,7 +251,7 @@ func actuallyCall(session *client.Client, procedure string, args wamp.List, kwar
 	if err != nil {
 		return nil, err
 	} else if result != nil && len(result.Arguments) > 0 {
-		jsonString, err := json.MarshalIndent(result.Arguments[0], "", "    ")
+		jsonString, err := json.MarshalIndent(result.Arguments, "", "    ")
 		if err != nil {
 			return nil, err
 		}
