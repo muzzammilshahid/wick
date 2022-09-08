@@ -73,6 +73,9 @@ var (
 	subscribeTopic        = subscribe.Arg("topic", "Topic to subscribe.").Required().String()
 	subscribeOptions      = subscribe.Flag("option", "Subscribe option. (May be provided multiple times)").Short('o').StringMap()
 	subscribePrintDetails = subscribe.Flag("details", "Print event details.").Bool()
+	concurrentSubscribe   = subscribe.Flag("concurrency", "Subscribe to topic concurrently. "+
+		"Only effective when called with --parallel.").Default("1").Int()
+	subscribeSessionCount = subscribe.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
 	keepaliveSubscribe    = subscribe.Flag("keepalive", "interval between websocket pings.").Default("0").Int()
 
 	publish            = kingpin.Command("publish", "Publish to a topic.")
@@ -247,25 +250,48 @@ func main() {
 		}
 
 	case subscribe.FullCommand():
-		session, err := connect(false, *keepaliveSubscribe)
+		if *subscribeSessionCount < 0 {
+			log.Fatalln("parallel must be greater than zero")
+		}
+		sessions, err := getSessions(*subscribeSessionCount, *concurrentSubscribe, false, *keepaliveSubscribe)
 		if err != nil {
 			log.Fatalln(err)
 		}
-		defer session.Close()
-		if err = core.Subscribe(session, *subscribeTopic, *subscribeOptions, *subscribePrintDetails); err != nil {
-			log.Fatalln(err)
+
+		defer func() {
+			wp := workerpool.New(*concurrentSubscribe)
+			for _, sess := range sessions {
+				wp.Submit(func() {
+					// Unsubscribe from topic.
+					sess.Unsubscribe(*subscribeTopic)
+					// Close the connection to the router
+					sess.Close()
+				})
+			}
+			wp.StopWait()
+		}()
+
+		for _, session := range sessions {
+			wp := workerpool.New(*concurrentSubscribe)
+			wp.Submit(func() {
+				if err = core.Subscribe(session, *subscribeTopic, *subscribeOptions, *subscribePrintDetails); err != nil {
+					log.Fatalln(err)
+				}
+			})
+			wp.StopWait()
 		}
 
 		// Wait for CTRL-c or client close while handling events.
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, os.Interrupt)
-		select {
-		case <-sigChan:
-		case <-session.Done():
-			log.Print("Router gone, exiting")
+		for _, session := range sessions {
+			select {
+			case <-sigChan:
+				return
+			case <-session.Done():
+				log.Print("Router gone, exiting")
+			}
 		}
-		// Unsubscribe from topic.
-		session.Unsubscribe(*subscribeTopic)
 
 	case publish.FullCommand():
 		var startTime int64
