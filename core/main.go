@@ -91,7 +91,7 @@ func ConnectCryptoSign(url string, realm string, serializer serialize.Serializat
 }
 
 func Subscribe(session *client.Client, topic string, subscribeOptions map[string]string,
-	printDetails bool) error {
+	printDetails bool, logSubscribeTime bool) error {
 	eventHandler := func(event *wamp.Event) {
 		if printDetails {
 			argsKWArgs(event.Arguments, event.ArgumentsKw, event.Details)
@@ -100,11 +100,21 @@ func Subscribe(session *client.Client, topic string, subscribeOptions map[string
 		}
 	}
 
+	var startTime int64
+	if logSubscribeTime {
+		startTime = time.Now().UnixMilli()
+	}
+
 	// Subscribe to topic.
 	if err := session.Subscribe(topic, eventHandler, dictToWampDict(subscribeOptions)); err != nil {
 		return err
 	}
-	logger.Printf("Subscribed to topic '%s'\n", topic)
+	if logSubscribeTime {
+		endTime := time.Now().UnixMilli()
+		logger.Printf("Subscribed to topic '%s' in %dms\n", topic, endTime-startTime)
+	} else {
+		logger.Printf("Subscribed to topic '%s'\n", topic)
+	}
 	return nil
 }
 

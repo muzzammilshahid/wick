@@ -73,6 +73,7 @@ var (
 	subscribeTopic        = subscribe.Arg("topic", "Topic to subscribe.").Required().String()
 	subscribeOptions      = subscribe.Flag("option", "Subscribe option. (May be provided multiple times)").Short('o').StringMap()
 	subscribePrintDetails = subscribe.Flag("details", "Print event details.").Bool()
+	logSubscribeTime      = subscribe.Flag("time", "Log time to join session and subscribe a topic.").Bool()
 	concurrentSubscribe   = subscribe.Flag("concurrency", "Subscribe to topic concurrently. "+
 		"Only effective when called with --parallel.").Default("1").Int()
 	subscribeSessionCount = subscribe.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
@@ -250,12 +251,20 @@ func main() {
 		}
 
 	case subscribe.FullCommand():
+		var startTime int64
 		if *subscribeSessionCount < 0 {
 			log.Fatalln("parallel must be greater than zero")
 		}
-		sessions, err := getSessions(*subscribeSessionCount, *concurrentSubscribe, false, *keepaliveSubscribe)
+		if *logSubscribeTime {
+			startTime = time.Now().UnixMilli()
+		}
+		sessions, err := getSessions(*subscribeSessionCount, *concurrentSubscribe, *logSubscribeTime, *keepaliveSubscribe)
 		if err != nil {
 			log.Fatalln(err)
+		}
+		if *logSubscribeTime {
+			endTime := time.Now().UnixMilli()
+			log.Printf("%v sessions joined in %dms\n", *subscribeSessionCount, endTime-startTime)
 		}
 
 		defer func() {
@@ -274,7 +283,7 @@ func main() {
 		for _, session := range sessions {
 			wp := workerpool.New(*concurrentSubscribe)
 			wp.Submit(func() {
-				if err = core.Subscribe(session, *subscribeTopic, *subscribeOptions, *subscribePrintDetails); err != nil {
+				if err = core.Subscribe(session, *subscribeTopic, *subscribeOptions, *subscribePrintDetails, *logSubscribeTime); err != nil {
 					log.Fatalln(err)
 				}
 			})
