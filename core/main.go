@@ -129,9 +129,9 @@ func actualPublish(session *client.Client, topic string, args wamp.List, kwargs 
 
 	if logPublishTime {
 		endTime := time.Now().UnixMilli()
-		log.Printf("Published to topic %s in %dms\n", topic, endTime-startTime)
+		log.Debugf("Published to topic %s in %dms\n", topic, endTime-startTime)
 	} else {
-		log.Printf("Published to topic '%s'\n", topic)
+		log.Debugf("Published to topic '%s'\n", topic)
 	}
 	return nil
 }
