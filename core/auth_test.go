@@ -30,6 +30,7 @@ import (
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/transport/serialize"
 	"github.com/gammazero/nexus/v3/wamp"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -42,21 +43,13 @@ var (
 )
 
 func checkBaseConfig(cfg client.Config, t *testing.T) {
-	if cfg.Realm != realm {
-		t.Error("wrong realm")
-	}
+	assert.Equal(t, realm, cfg.Realm, "wrong realm")
 
-	if cfg.Serialization != serializer {
-		t.Error("wrong serializer")
-	}
+	assert.Equal(t, serializer, cfg.Serialization, "wrong serializer")
 
-	if cfg.HelloDetails["authid"] != authId {
-		t.Error("wrong authid")
-	}
+	assert.Equal(t, authId, cfg.HelloDetails["authid"], "wrong authid")
 
-	if cfg.HelloDetails["authrole"] != authRole {
-		t.Error("wrong authrole")
-	}
+	assert.Equal(t, authRole, cfg.HelloDetails["authrole"], "wrong authrole")
 }
 
 func TestAnonymousConfig(t *testing.T) {
@@ -113,7 +106,5 @@ func TestHandleCryptosign(t *testing.T) {
 
 	response, _ := callable(&fakeChallenge)
 
-	if response != signedHex+challengeHex {
-		t.Error("crytosign authentication failed")
-	}
+	assert.Equalf(t, signedHex+challengeHex, response, "crytosign authentication failed")
 }

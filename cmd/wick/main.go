@@ -34,12 +34,18 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/workerpool"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/s-things/wick/core"
+)
+
+var (
+	coreSubscribe = core.Subscribe
+	corePublish   = core.Publish
+	coreRegister  = core.Register
+	coreCall      = core.Call
 )
 
 var (
@@ -124,89 +130,9 @@ var (
 
 const versionString = "0.5.0"
 
-func connect(logTime bool, keepalive int) (*client.Client, error) {
-	var session *client.Client
-	var err error
-	var startTime int64
-	serializerToUse := getSerializerByName(*serializer)
-
-	if logTime {
-		startTime = time.Now().UnixMilli()
-	}
-	switch *authMethod {
-	case "anonymous":
-		if *privateKey != "" {
-			return nil, fmt.Errorf("private key not needed for anonymous auth")
-		}
-		if *ticket != "" {
-			return nil, fmt.Errorf("ticket not needed for anonymous auth")
-		}
-		if *secret != "" {
-			return nil, fmt.Errorf("secret not needed for anonymous auth")
-		}
-		session, err = core.ConnectAnonymous(*url, *realm, serializerToUse, *authid, *authrole, keepalive)
-		if err != nil {
-			return nil, err
-		}
-	case "ticket":
-		if *ticket == "" {
-			return nil, fmt.Errorf("must provide ticket when authMethod is ticket")
-		}
-		session, err = core.ConnectTicket(*url, *realm, serializerToUse, *authid, *authrole, *ticket, keepalive)
-		if err != nil {
-			return nil, err
-		}
-	case "wampcra":
-		if *secret == "" {
-			return nil, fmt.Errorf("must provide secret when authMethod is wampcra")
-		}
-		session, err = core.ConnectCRA(*url, *realm, serializerToUse, *authid, *authrole, *secret, keepalive)
-		if err != nil {
-			return nil, err
-		}
-	case "cryptosign":
-		if *privateKey == "" {
-			return nil, fmt.Errorf("must provide private key when authMethod is cryptosign")
-		}
-		session, err = core.ConnectCryptoSign(*url, *realm, serializerToUse, *authid, *authrole, *privateKey, keepalive)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if logTime {
-		endTime := time.Now().UnixMilli()
-		log.Printf("session joined in %dms\n", endTime-startTime)
-	}
-	return session, err
-}
-
-func getSessions(sessionCount int, concurrency int, logTime bool, keepalive int) ([]*client.Client, error) {
-	var sessions []*client.Client
-	wp := workerpool.New(concurrency)
-	resC := make(chan error, sessionCount)
-	for i := 0; i < sessionCount; i++ {
-		wp.Submit(func() {
-			session, err := connect(logTime, keepalive)
-			sessions = append(sessions, session)
-			resC <- err
-		})
-	}
-
-	wp.StopWait()
-	if err := getErrorFromErrorChannel(resC); err != nil {
-		return nil, err
-	}
-	return sessions, nil
-}
-
 func main() {
 	kingpin.Version(versionString).VersionFlag.Short('v')
 	cmd := kingpin.Parse()
-
-	if *profile != "" {
-		readFromProfile()
-	}
 
 	if *privateKey != "" && *ticket != "" {
 		log.Fatal("Provide only one of private key, ticket or secret")
@@ -221,6 +147,27 @@ func main() {
 		*authMethod = selectAuthMethod(*privateKey, *ticket, *secret)
 	}
 
+	var clientInfo *core.ClientInfo
+	if *profile != "" {
+		var err error
+		clientInfo, err = readFromProfile(*profile)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	} else {
+		clientInfo = &core.ClientInfo{
+			Url:        *url,
+			Realm:      *realm,
+			Serializer: getSerializerByName(*serializer),
+			Authid:     *authid,
+			Authrole:   *authrole,
+			AuthMethod: *authMethod,
+			PrivateKey: *privateKey,
+			Ticket:     *ticket,
+			Secret:     *secret,
+		}
+	}
+
 	switch cmd {
 	case join.FullCommand():
 		var startTime int64
@@ -231,7 +178,7 @@ func main() {
 		if *logJoinTime {
 			startTime = time.Now().UnixMilli()
 		}
-		sessions, err := getSessions(*joinSessionCount, *concurrentJoin, *logJoinTime, *keepaliveJoin)
+		sessions, err := getSessions(clientInfo, *joinSessionCount, *concurrentJoin, *logJoinTime, *keepaliveJoin)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -275,7 +222,7 @@ func main() {
 		if *logSubscribeTime {
 			startTime = time.Now().UnixMilli()
 		}
-		sessions, err := getSessions(*subscribeSessionCount, *concurrentSubscribe, *logSubscribeTime, *keepaliveSubscribe)
+		sessions, err := getSessions(clientInfo, *subscribeSessionCount, *concurrentSubscribe, *logSubscribeTime, *keepaliveSubscribe)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -305,7 +252,7 @@ func main() {
 		for _, session := range sessions {
 			sess := session
 			wp.Submit(func() {
-				err := core.Subscribe(sess, *subscribeTopic, *subscribeOptions,
+				err := coreSubscribe(sess, *subscribeTopic, *subscribeOptions,
 					*subscribePrintDetails, *logSubscribeTime, eventC)
 				if err != nil {
 					log.Fatalln(err)
@@ -358,7 +305,7 @@ func main() {
 		if *logPublishTime {
 			startTime = time.Now().UnixMilli()
 		}
-		sessions, err := getSessions(*publishSessionCount, *concurrentPublish, *logPublishTime, *keepalivePublish)
+		sessions, err := getSessions(clientInfo, *publishSessionCount, *concurrentPublish, *logPublishTime, *keepalivePublish)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -383,7 +330,7 @@ func main() {
 		for _, session := range sessions {
 			sess := session
 			wp.Submit(func() {
-				if err = core.Publish(sess, *publishTopic, *publishArgs, *publishKeywordArgs, *publishOptions, *logPublishTime,
+				if err = corePublish(sess, *publishTopic, *publishArgs, *publishKeywordArgs, *publishOptions, *logPublishTime,
 					*repeatPublish, *delayPublish, *concurrentPublish); err != nil {
 					log.Fatalln(err)
 				}
@@ -400,7 +347,7 @@ func main() {
 		if *logRegisterTime {
 			startTime = time.Now().UnixMilli()
 		}
-		sessions, err := getSessions(*registerSessionCount, *concurrentRegister, *logRegisterTime, *keepaliveRegister)
+		sessions, err := getSessions(clientInfo, *registerSessionCount, *concurrentRegister, *logRegisterTime, *keepaliveRegister)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -427,7 +374,7 @@ func main() {
 		for _, session := range sessions {
 			sess := session
 			wp.Submit(func() {
-				if err = core.Register(sess, *registerProcedure, *onInvocationCmd, *delay, *invokeCount, *registerOptions, *logRegisterTime); err != nil {
+				if err = coreRegister(sess, *registerProcedure, *onInvocationCmd, *delay, *invokeCount, *registerOptions, *logRegisterTime); err != nil {
 					log.Fatalln(err)
 				}
 			})
@@ -458,7 +405,7 @@ func main() {
 		if *logCallTime {
 			startTime = time.Now().UnixMilli()
 		}
-		sessions, err := getSessions(*callSessionCount, *concurrentCalls, *logCallTime, *keepaliveCall)
+		sessions, err := getSessions(clientInfo, *callSessionCount, *concurrentCalls, *logCallTime, *keepaliveCall)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -483,7 +430,7 @@ func main() {
 		for _, session := range sessions {
 			sess := session
 			wp.Submit(func() {
-				if err = core.Call(sess, *callProcedure, *callArgs, *callKeywordArgs, *logCallTime, *repeatCount, *delayCall,
+				if err = coreCall(sess, *callProcedure, *callArgs, *callKeywordArgs, *logCallTime, *repeatCount, *delayCall,
 					*concurrentCalls, *callOptions); err != nil {
 					log.Fatalln(err)
 				}

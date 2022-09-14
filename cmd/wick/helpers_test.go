@@ -25,57 +25,42 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/gammazero/nexus/v3/transport/serialize"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSerializerSelect(t *testing.T) {
-	serializerID := getSerializerByName("json")
-	if serializerID != serialize.JSON {
-		t.Errorf("invalid serializer id for json, expected=%d, got=%d", serialize.JSON, serializerID)
-	}
-
-	serializerID = getSerializerByName("cbor")
-	if serializerID != serialize.CBOR {
-		t.Errorf("invalid serializer id for cbor, expected=%d, got=%d", serialize.CBOR, serializerID)
-	}
-
-	serializerID = getSerializerByName("msgpack")
-	if serializerID != serialize.MSGPACK {
-		t.Errorf("invalid serializer id for msgpack, expected=%d, got=%d", serialize.MSGPACK, serializerID)
-	}
-
-	serializerID = getSerializerByName("halo")
-	if serializerID != -1 {
-		t.Errorf("should not accept as only anonymous,ticket,wampcra,cryptosign are allowed")
+	for _, data := range []struct {
+		name               string
+		expectedSerializer serialize.Serialization
+		message            string
+	}{
+		{"json", serialize.JSON, fmt.Sprintf("invalid serializer id for json, expected=%d", serialize.JSON)},
+		{"cbor", serialize.CBOR, fmt.Sprintf("invalid serializer id for cbor, expected=%d", serialize.CBOR)},
+		{"msgpack", serialize.MSGPACK, fmt.Sprintf("invalid serializer id for msgpack, expected=%d", serialize.MSGPACK)},
+		{"halo", -1, "should not accept as only anonymous,ticket,wampcra,cryptosign are allowed"},
+	} {
+		serializerId := getSerializerByName(data.name)
+		assert.Equal(t, data.expectedSerializer, serializerId, data.message)
 	}
 }
 
-func TestSelectCryptosignAuthMethod(t *testing.T) {
-	method := selectAuthMethod("b99067e6e271ae300f3f5d9809fa09288e96f2bcef8dd54b7aabeb4e579d37ef", "", "")
-	if method != "cryptosign" {
-		t.Error("problem in choosing auth method")
-	}
-}
-
-func TestSelectTicketAuthMethod(t *testing.T) {
-	method := selectAuthMethod("", "williamsburg", "")
-	if method != "ticket" {
-		t.Error("problem in choosing auth method")
-	}
-}
-
-func TestSelectWampCRAAuthMethod(t *testing.T) {
-	method := selectAuthMethod("", "", "williamsburg")
-	if method != "wampcra" {
-		t.Error("problem in choosing auth method")
-	}
-}
-
-func TestAutoSelectMethodAnony(t *testing.T) {
-	method := selectAuthMethod("", "", "")
-	if method != "anonymous" {
-		t.Error("default authmethod must be anonymous if no credentials provided")
+func TestSelectAuthMethod(t *testing.T) {
+	for _, data := range []struct {
+		privateKey     string
+		ticket         string
+		secret         string
+		expectedMethod string
+	}{
+		{"b99067e6e271ae300f3f5d9809fa09288e96f2bcef8dd54b7aabeb4e579d37ef", "", "", "cryptosign"},
+		{"", "williamsburg", "", "ticket"},
+		{"", "", "williamsburg", "wampcra"},
+		{"", "", "", "anonymous"},
+	} {
+		method := selectAuthMethod(data.privateKey, data.ticket, data.secret)
+		assert.Equal(t, data.expectedMethod, method, "problem in choosing auth method")
 	}
 }

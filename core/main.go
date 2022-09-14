@@ -31,14 +31,12 @@ import (
 	"time"
 
 	"github.com/gammazero/nexus/v3/client"
-	"github.com/gammazero/nexus/v3/transport/serialize"
 	"github.com/gammazero/nexus/v3/wamp"
 	"github.com/gammazero/workerpool"
 	log "github.com/sirupsen/logrus"
 )
 
 func connect(url string, cfg client.Config) (*client.Client, error) {
-
 	url = sanitizeURL(url)
 
 	session, err := client.ConnectNet(context.Background(), url, cfg)
@@ -52,45 +50,43 @@ func connect(url string, cfg client.Config) (*client.Client, error) {
 	return session, nil
 }
 
-func ConnectAnonymous(url string, realm string, serializer serialize.Serialization, authid string,
-	authrole string, keepaliveInterval int) (*client.Client, error) {
+func ConnectAnonymous(clientInfo *ClientInfo, keepaliveInterval int) (*client.Client, error) {
+	cfg := getAnonymousAuthConfig(clientInfo.Realm, clientInfo.Serializer, clientInfo.Authid,
+		clientInfo.Authrole, keepaliveInterval)
 
-	cfg := getAnonymousAuthConfig(realm, serializer, authid, authrole, keepaliveInterval)
-
-	return connect(url, cfg)
+	return connect(clientInfo.Url, cfg)
 }
 
-func ConnectTicket(url string, realm string, serializer serialize.Serialization, authid string, authrole string,
-	ticket string, keepaliveInterval int) (*client.Client, error) {
+func ConnectTicket(clientInfo *ClientInfo, keepaliveInterval int) (*client.Client, error) {
+	cfg := getTicketAuthConfig(clientInfo.Realm, clientInfo.Serializer, clientInfo.Authid,
+		clientInfo.Authrole, clientInfo.Ticket, keepaliveInterval)
 
-	cfg := getTicketAuthConfig(realm, serializer, authid, authrole, ticket, keepaliveInterval)
-
-	return connect(url, cfg)
+	return connect(clientInfo.Url, cfg)
 }
 
-func ConnectCRA(url string, realm string, serializer serialize.Serialization, authid string, authrole string,
-	secret string, keepaliveInterval int) (*client.Client, error) {
+func ConnectCRA(clientInfo *ClientInfo, keepaliveInterval int) (*client.Client, error) {
+	cfg := getCRAAuthConfig(clientInfo.Realm, clientInfo.Serializer, clientInfo.Authid,
+		clientInfo.Authrole, clientInfo.Secret, keepaliveInterval)
 
-	cfg := getCRAAuthConfig(realm, serializer, authid, authrole, secret, keepaliveInterval)
-
-	return connect(url, cfg)
+	return connect(clientInfo.Url, cfg)
 }
 
-func ConnectCryptoSign(url string, realm string, serializer serialize.Serialization, authid string, authrole string,
-	privateKey string, keepaliveInterval int) (*client.Client, error) {
+func ConnectCryptoSign(clientInfo *ClientInfo, keepaliveInterval int) (*client.Client, error) {
+	cfg := getCryptosignAuthConfig(clientInfo.Realm, clientInfo.Serializer, clientInfo.Authid,
+		clientInfo.Authrole, clientInfo.PrivateKey, keepaliveInterval)
 
-	cfg := getCryptosignAuthConfig(realm, serializer, authid, authrole, privateKey, keepaliveInterval)
-
-	return connect(url, cfg)
+	return connect(clientInfo.Url, cfg)
 }
 
 func Subscribe(session *client.Client, topic string, subscribeOptions map[string]string,
 	printDetails bool, logSubscribeTime bool, eventReceived chan struct{}) error {
 	eventHandler := func(event *wamp.Event) {
 		if printDetails {
-			argsKWArgs(event.Arguments, event.ArgumentsKw, event.Details)
+			output, _ := argsKWArgs(event.Arguments, event.ArgumentsKw, event.Details)
+			fmt.Println(output)
 		} else {
-			argsKWArgs(event.Arguments, event.ArgumentsKw, nil)
+			output, _ := argsKWArgs(event.Arguments, event.ArgumentsKw, nil)
+			fmt.Println(output)
 		}
 		if eventReceived != nil {
 			eventReceived <- struct{}{}
@@ -216,7 +212,8 @@ func actuallyCall(session *client.Client, procedure string, args wamp.List, kwar
 	var err error
 	if callOptions["receive_progress"] != nil && callOptions["receive_progress"] == true {
 		result, err = session.Call(context.Background(), procedure, callOptions, args, kwargs, func(progress *wamp.Result) {
-			progressArgsKWArgs(progress.Arguments, progress.ArgumentsKw)
+			output, _ := progressArgsKWArgs(progress.Arguments, progress.ArgumentsKw)
+			fmt.Println(output)
 		})
 	} else {
 		result, err = session.Call(context.Background(), procedure, callOptions, args, kwargs, nil)
