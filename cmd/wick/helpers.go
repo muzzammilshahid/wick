@@ -70,6 +70,20 @@ func selectAuthMethod(privateKey string, ticket string, secret string) string {
 	return "anonymous"
 }
 
+func validateData(sessionCount int, concurrency int, keepAlive int) error {
+	if sessionCount < 1 {
+		return fmt.Errorf("parallel must be greater than zero")
+	}
+	if concurrency < 1 {
+		return fmt.Errorf("concurrency must be greater than zero")
+	}
+	if keepAlive < 0 {
+		return fmt.Errorf("keepalive interval must be greater than zero")
+	}
+
+	return nil
+}
+
 func readFromProfile(profile string) (*core.ClientInfo, error) {
 	var clientInfo *core.ClientInfo
 	cfg, err := ini.Load(fmt.Sprintf("%s/.wick/config", os.Getenv("HOME")))

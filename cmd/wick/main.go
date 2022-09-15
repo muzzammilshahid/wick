@@ -71,9 +71,10 @@ var (
 
 	join             = kingpin.Command("join-only", "Start wamp session.")
 	joinSessionCount = join.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
-	concurrentJoin   = join.Flag("concurrency", "Start wamp session concurrently").Default("1").Int()
-	logJoinTime      = join.Flag("time", "Log session join time").Bool()
-	keepaliveJoin    = join.Flag("keepalive", "interval between websocket pings.").Default("0").Int()
+	concurrentJoin   = join.Flag("concurrency", "Start wamp session concurrently. "+
+		"Only effective when called with --parallel").Default("1").Int()
+	logJoinTime   = join.Flag("time", "Log session join time").Bool()
+	keepaliveJoin = join.Flag("keepalive", "interval between websocket pings.").Default("0").Int()
 
 	subscribe             = kingpin.Command("subscribe", "Subscribe a topic.")
 	subscribeTopic        = subscribe.Arg("topic", "Topic to subscribe.").Required().String()
@@ -95,7 +96,7 @@ var (
 	logPublishTime     = publish.Flag("time", "Log publish return time.").Bool()
 	delayPublish       = publish.Flag("delay", "Provide the delay in milliseconds.").Default("0").Int()
 	concurrentPublish  = publish.Flag("concurrency", "Publish to the topic concurrently. "+
-		"Only effective when called with --repeat.").Default("1").Int()
+		"Only effective when called with --repeat and/or --parallel.").Default("1").Int()
 	publishSessionCount = publish.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
 	keepalivePublish    = publish.Flag("keepalive", "interval between websocket pings.").Default("0").Int()
 
@@ -120,7 +121,7 @@ var (
 	delayCall       = call.Flag("delay", "Provide the delay in milliseconds.").Default("0").Int()
 	callOptions     = call.Flag("option", "Procedure call option. (May be provided multiple times)").Short('o').StringMap()
 	concurrentCalls = call.Flag("concurrency", "Make concurrent calls without waiting for the result for each to return. "+
-		"Only effective when called with --repeat.").Default("1").Int()
+		"Only effective when called with --repeat and/or --parallel.").Default("1").Int()
 	callSessionCount = call.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
 	keepaliveCall    = call.Flag("keepalive", "interval between websocket pings.").Default("0").Int()
 
@@ -170,11 +171,11 @@ func main() {
 
 	switch cmd {
 	case join.FullCommand():
-		var startTime int64
-		if *joinSessionCount < 0 {
-			log.Fatalln("parallel must be greater than zero")
+		if err := validateData(*joinSessionCount, *concurrentJoin, *keepaliveJoin); err != nil {
+			log.Fatalln(err)
 		}
 
+		var startTime int64
 		if *logJoinTime {
 			startTime = time.Now().UnixMilli()
 		}
@@ -212,13 +213,14 @@ func main() {
 		}
 
 	case subscribe.FullCommand():
-		var startTime int64
-		if *subscribeSessionCount < 0 {
-			log.Fatalln("parallel must be greater than zero")
+		if err := validateData(*subscribeSessionCount, *concurrentSubscribe, *keepaliveSubscribe); err != nil {
+			log.Fatalln(err)
 		}
 		if *subscribeEventCount < 0 {
 			log.Fatalln("event count must be greater than zero")
 		}
+
+		var startTime int64
 		if *logSubscribeTime {
 			startTime = time.Now().UnixMilli()
 		}
@@ -294,14 +296,14 @@ func main() {
 		}
 
 	case publish.FullCommand():
+		if err := validateData(*publishSessionCount, *concurrentPublish, *keepalivePublish); err != nil {
+			log.Fatalln(err)
+		}
+
 		var startTime int64
 		if *repeatPublish < 1 {
 			log.Fatalln("repeat count must be greater than zero")
 		}
-		if *publishSessionCount < 0 {
-			log.Fatalln("parallel must be greater than zero")
-		}
-
 		if *logPublishTime {
 			startTime = time.Now().UnixMilli()
 		}
@@ -339,11 +341,11 @@ func main() {
 		wp.StopWait()
 
 	case register.FullCommand():
-		var startTime int64
-		if *registerSessionCount < 0 {
-			log.Fatalln("parallel must be greater than zero")
+		if err := validateData(*registerSessionCount, *concurrentRegister, *keepaliveRegister); err != nil {
+			log.Fatalln(err)
 		}
 
+		var startTime int64
 		if *logRegisterTime {
 			startTime = time.Now().UnixMilli()
 		}
@@ -394,6 +396,10 @@ func main() {
 		}
 
 	case call.FullCommand():
+		if err := validateData(*callSessionCount, *concurrentCalls, *keepaliveCall); err != nil {
+			log.Fatalln(err)
+		}
+
 		var startTime int64
 		if *repeatCount < 1 {
 			log.Fatalln("repeat count must be greater than zero")
