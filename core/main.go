@@ -43,8 +43,13 @@ func connect(url string, cfg client.Config) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	} else {
-		// FIXME: use a better logger and only print such messages in debug mode.
-		//logger.Println("Connected to ", baseUrl)
+		log.Debugln("Connected to", url)
+		log.Debugf("attached session '%v' to realm '%s' (authid='%s', authrole='%s', authmethod='%s', authprovider='%s')",
+			session.ID(), cfg.Realm, session.RealmDetails()["authid"], session.RealmDetails()["authrole"],
+			session.RealmDetails()["authmethod"], session.RealmDetails()["authprovider"])
+		brokerFeatures := buildStringFromMap(session.RealmDetails()["roles"].(map[string]interface{})["broker"].(map[string]interface{})["features"].(map[string]interface{}))
+		dealerFeatures := buildStringFromMap(session.RealmDetails()["roles"].(map[string]interface{})["dealer"].(map[string]interface{})["features"].(map[string]interface{}))
+		log.Debugf("broker features(%s), dealer features(%s)", brokerFeatures, dealerFeatures)
 	}
 
 	return session, nil
@@ -159,7 +164,7 @@ func Publish(session *client.Client, topic string, args []string, kwargs map[str
 		return err
 	}
 
-	if logPublishTime && repeatPublish > 1 {
+	if logPublishTime {
 		endTime := time.Now().UnixMilli()
 		log.Printf("%d calls took %dms\n", repeatPublish, endTime-startTime)
 	}
@@ -230,7 +235,7 @@ func actuallyCall(session *client.Client, procedure string, args wamp.List, kwar
 
 	if logCallTime {
 		endTime := time.Now().UnixMilli()
-		log.Printf("call took %dms\n", endTime-startTime)
+		log.Debugf("call took %dms\n", endTime-startTime)
 	}
 	return result, nil
 }
@@ -259,7 +264,7 @@ func Call(session *client.Client, procedure string, args []string, kwargs map[st
 		return err
 	}
 
-	if logCallTime && repeatCount > 1 {
+	if logCallTime {
 		endTime := time.Now().UnixMilli()
 		log.Printf("%d calls took %dms\n", repeatCount, endTime-startTime)
 	}

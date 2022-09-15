@@ -68,6 +68,7 @@ var (
 	serializer = kingpin.Flag("serializer", "The serializer to use.").Envar("WICK_SERIALIZER").
 			Default("json").Enum("json", "msgpack", "cbor")
 	profile = kingpin.Flag("profile", "").Envar("WICK_PROFILE").String()
+	debug   = kingpin.Flag("debug", "Enable debug logging.").Bool()
 
 	join             = kingpin.Command("join-only", "Start wamp session.")
 	joinSessionCount = join.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
@@ -134,6 +135,10 @@ const versionString = "0.5.0"
 func main() {
 	kingpin.Version(versionString).VersionFlag.Short('v')
 	cmd := kingpin.Parse()
+
+	if *debug {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	if *privateKey != "" && *ticket != "" {
 		log.Fatal("Provide only one of private key, ticket or secret")

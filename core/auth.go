@@ -35,6 +35,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var logger *log.Logger
+
+func init() {
+	logger = log.New()
+}
+
 func getAnonymousAuthConfig(realm string, serializer serialize.Serialization, authid string,
 	authrole string, keepAliveInterval int) client.Config {
 

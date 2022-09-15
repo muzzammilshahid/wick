@@ -215,6 +215,14 @@ func shellOut(command string) (string, string, error) {
 	return stdout.String(), stderr.String(), err
 }
 
+func buildStringFromMap(brokerFeatures map[string]interface{}) string {
+	var builder strings.Builder
+	for key, value := range brokerFeatures {
+		fmt.Fprintf(&builder, "%s=%v, ", key, value)
+	}
+	return strings.TrimRight(builder.String(), ", ")
+}
+
 func getKeyPair(privateKeyKex string) (ed25519.PublicKey, ed25519.PrivateKey) {
 	privateKeyRaw, _ := hex.DecodeString(privateKeyKex)
 	var privateKey ed25519.PrivateKey
