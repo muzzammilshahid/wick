@@ -26,11 +26,95 @@ package main
 
 import (
 	"fmt"
+	"github.com/gammazero/workerpool"
+	"io"
 	"testing"
 
+	"github.com/gammazero/nexus/v3/router"
 	"github.com/gammazero/nexus/v3/transport/serialize"
+	"github.com/gammazero/nexus/v3/wamp"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/s-things/wick/core"
 )
+
+var (
+	testRealm      = "wick.test"
+	netAddr        = "localhost"
+	wsPort         = 8080
+	testClientInfo = &core.ClientInfo{
+		Url:        "ws://localhost:8080/ws",
+		Realm:      testRealm,
+		Serializer: serialize.JSON,
+		AuthMethod: "anonymous",
+	}
+	sessionCount    = 10000
+	testConcurrency = 100
+)
+
+var logger *log.Logger
+
+func init() {
+	logger = log.New()
+}
+
+func startWsServer() (router.Router, io.Closer, error) {
+	realmConfig := &router.RealmConfig{
+		URI:              wamp.URI(testRealm),
+		StrictURI:        true,
+		AnonymousAuth:    true,
+		AllowDisclose:    true,
+		RequireLocalAuth: true,
+	}
+	config := &router.Config{
+		RealmConfigs: []*router.RealmConfig{realmConfig},
+	}
+	rout, err := router.NewRouter(config, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Create websocket server.
+	wss := router.NewWebsocketServer(rout)
+	wsAddr := fmt.Sprintf("%s:%d", netAddr, wsPort)
+	wsCloser, err := wss.ListenAndServe(wsAddr)
+	if err != nil {
+		return nil, nil, err
+	}
+	return rout, wsCloser, err
+}
+
+func TestSessions(t *testing.T) {
+	rout, wsCloser, err := startWsServer()
+	require.NoError(t, err)
+	defer rout.Close()
+	defer wsCloser.Close()
+
+	t.Run("TestConnect", func(t *testing.T) {
+		session, err := connect(testClientInfo, false, 1)
+		defer session.Close()
+		require.NoError(t, err)
+		require.Equal(t, true, session.Connected(), "get already closed session")
+	})
+
+	t.Run("TestGetSessions", func(t *testing.T) {
+		sessions, err := getSessions(testClientInfo, sessionCount, testConcurrency, false, 0)
+		defer func() {
+			wp := workerpool.New(len(sessions))
+			for _, sess := range sessions {
+				s := sess
+				wp.Submit(func() {
+					// Close the connection to the router
+					s.Close()
+				})
+			}
+			wp.StopWait()
+		}()
+		require.NoError(t, err)
+		require.Equal(t, sessionCount, len(sessions))
+	})
+}
 
 func TestSerializerSelect(t *testing.T) {
 	for _, data := range []struct {

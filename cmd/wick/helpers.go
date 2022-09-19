@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gammazero/nexus/v3/client"
@@ -195,12 +196,15 @@ func connect(clientInfo *core.ClientInfo, logTime bool, keepalive int) (*client.
 func getSessions(clientInfo *core.ClientInfo, sessionCount int, concurrency int,
 	logTime bool, keepalive int) ([]*client.Client, error) {
 	var sessions []*client.Client
+	var mutex sync.Mutex
 	wp := workerpool.New(concurrency)
 	resC := make(chan error, sessionCount)
 	for i := 0; i < sessionCount; i++ {
 		wp.Submit(func() {
 			session, err := connect(clientInfo, logTime, keepalive)
+			mutex.Lock()
 			sessions = append(sessions, session)
+			mutex.Unlock()
 			resC <- err
 		})
 	}
