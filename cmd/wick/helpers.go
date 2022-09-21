@@ -340,11 +340,13 @@ func getSessions(clientInfo *core.ClientInfo, sessionCount int, concurrency int,
 	logTime bool, keepalive int) ([]*client.Client, error) {
 	var sessions []*client.Client
 	var mutex sync.Mutex
+	var session *client.Client
+	var err error
 	wp := workerpool.New(concurrency)
 	resC := make(chan error, sessionCount)
 	for i := 0; i < sessionCount; i++ {
 		wp.Submit(func() {
-			session, err := connect(clientInfo, logTime, keepalive)
+			session, err = connect(clientInfo, logTime, keepalive)
 			mutex.Lock()
 			sessions = append(sessions, session)
 			mutex.Unlock()
