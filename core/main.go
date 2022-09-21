@@ -25,6 +25,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -226,11 +227,14 @@ func actuallyCall(session *client.Client, procedure string, args wamp.List, kwar
 	if err != nil {
 		return nil, err
 	} else if result != nil && len(result.Arguments) > 0 {
-		jsonString, err := json.MarshalIndent(result.Arguments, "", "    ")
-		if err != nil {
+		buffer := &bytes.Buffer{}
+		encoder := json.NewEncoder(buffer)
+		encoder.SetEscapeHTML(false)
+		encoder.SetIndent("", "    ")
+		if err = encoder.Encode(result.Arguments); err != nil {
 			return nil, err
 		}
-		fmt.Println(string(jsonString))
+		fmt.Println(string(buffer.Bytes()))
 	}
 
 	if logCallTime {

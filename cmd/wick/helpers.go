@@ -355,7 +355,7 @@ func getSessions(clientInfo *core.ClientInfo, sessionCount int, concurrency int,
 	}
 
 	wp.StopWait()
-	if err := getErrorFromErrorChannel(resC); err != nil {
+	if err = getErrorFromErrorChannel(resC); err != nil {
 		return nil, err
 	}
 	return sessions, nil
