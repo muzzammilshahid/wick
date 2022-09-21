@@ -35,6 +35,7 @@ import (
 	"github.com/gammazero/nexus/v3/transport/serialize"
 	"github.com/gammazero/workerpool"
 	log "github.com/sirupsen/logrus"
+	"github.com/tcnksm/go-input"
 	"gopkg.in/ini.v1"
 
 	"github.com/s-things/wick/core"
@@ -85,8 +86,138 @@ func validateData(sessionCount int, concurrency int, keepAlive int) error {
 	return nil
 }
 
+func getInputFromUser() (*core.ClientInfo, error) {
+	ui := &input.UI{}
+	clientInfo := &core.ClientInfo{}
+	sectionName, err := ui.Ask("Enter section name", &input.Options{
+		Default:   ini.DefaultSection,
+		HideOrder: true,
+	})
+	clientInfo.Url, err = ui.Ask("Enter url", &input.Options{
+		Default:   "ws://localhost:8080/ws",
+		HideOrder: true,
+	})
+	clientInfo.Realm, err = ui.Ask("Enter realm", &input.Options{
+		Default:   "realm1",
+		HideOrder: true,
+	})
+	serializerStr, err := ui.Ask("Enter serializer", &input.Options{
+		Default:   "json",
+		Loop:      true,
+		HideOrder: true,
+		ValidateFunc: func(s string) error {
+			if s != "json" && s != "cbor" && s != "msgpack" {
+				return fmt.Errorf("value must be one of 'json', 'msgpack', 'cbor'")
+			}
+			return nil
+		},
+	})
+	clientInfo.Authid, err = ui.Ask("Enter authid", &input.Options{
+		HideOrder: true,
+	})
+	clientInfo.Authrole, err = ui.Ask("Enter authrole", &input.Options{
+		HideOrder: true,
+	})
+	clientInfo.AuthMethod, err = ui.Ask("Enter authmethod", &input.Options{
+		Default:   "anonymous",
+		HideOrder: true,
+		Loop:      true,
+		ValidateFunc: func(s string) error {
+			if s != "anonymous" && s != "ticket" && s != "wampcra" && s != "cryptosign" {
+				return fmt.Errorf("value must be one of 'anonymous', 'ticket', 'wampcra', 'cryptosign'")
+			}
+			return nil
+		},
+	})
+	if clientInfo.AuthMethod == "ticket" {
+		clientInfo.Ticket, err = ui.Ask("Enter ticket", &input.Options{
+			HideOrder: true,
+		})
+	} else if clientInfo.AuthMethod == "wampcra" {
+		clientInfo.Secret, err = ui.Ask("Enter secret", &input.Options{
+			HideOrder: true,
+		})
+	} else if clientInfo.AuthMethod == "cryptosign" {
+		clientInfo.PrivateKey, err = ui.Ask("Enter private key", &input.Options{
+			HideOrder: true,
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err = writeProfile(sectionName, serializerStr, clientInfo); err != nil {
+		return nil, err
+	}
+	return clientInfo, nil
+}
+
+func writeProfile(sectionName string, serializerStr string, clientInfo *core.ClientInfo) error {
+	filePath := fmt.Sprintf("%s/.wick/config", os.Getenv("HOME"))
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		err = os.MkdirAll(fmt.Sprintf("%s/.wick", os.Getenv("HOME")), 0700)
+		file, err := os.Create(filePath)
+		if err != nil {
+			return err
+		}
+		file.Close()
+	}
+	cfg, err := ini.Load(filePath)
+	if err != nil {
+		return fmt.Errorf("fail to load config: %v", err)
+	}
+
+	section, err := cfg.NewSection(sectionName)
+	if err != nil {
+		return fmt.Errorf("fail to create config: %v", err)
+	}
+
+	section, err = cfg.GetSection(sectionName)
+
+	if _, err = section.NewKey("url", clientInfo.Url); err != nil {
+		return fmt.Errorf("error in creating key: %v", err)
+	}
+
+	if _, err = section.NewKey("realm", clientInfo.Realm); err != nil {
+		return fmt.Errorf("error in creating key: %v", err)
+	}
+
+	if _, err = section.NewKey("serializer", serializerStr); err != nil {
+		return fmt.Errorf("error in creating key: %v", err)
+	}
+
+	if _, err = section.NewKey("authid", clientInfo.Authid); err != nil {
+		return fmt.Errorf("error in creating key: %v", err)
+	}
+
+	if _, err = section.NewKey("authrole", clientInfo.Authrole); err != nil {
+		return fmt.Errorf("error in creating key: %v", err)
+	}
+
+	if _, err = section.NewKey("authmethod", clientInfo.AuthMethod); err != nil {
+		return fmt.Errorf("error in creating key: %v", err)
+	}
+
+	if _, err = section.NewKey("private-key", clientInfo.PrivateKey); err != nil {
+		return fmt.Errorf("error in creating key: %v", err)
+	}
+
+	if _, err = section.NewKey("ticket", clientInfo.Ticket); err != nil {
+		return fmt.Errorf("error in creating key: %v", err)
+	}
+
+	if _, err = section.NewKey("secret", clientInfo.Secret); err != nil {
+		return fmt.Errorf("error in creating key: %v", err)
+	}
+
+	err = cfg.SaveTo(filePath)
+	if err != nil {
+		return fmt.Errorf("error in saving file: %s", err)
+	}
+	return nil
+}
+
 func readFromProfile(profile string) (*core.ClientInfo, error) {
-	var clientInfo *core.ClientInfo
+	clientInfo := &core.ClientInfo{}
 	cfg, err := ini.Load(fmt.Sprintf("%s/.wick/config", os.Getenv("HOME")))
 	if err != nil {
 		return nil, fmt.Errorf("fail to read config: %v", err)
@@ -109,6 +240,18 @@ func readFromProfile(profile string) (*core.ClientInfo, error) {
 		}
 		return s
 	})
+	if section.Key("serializer").String() != "json" &&
+		section.Key("serializer").String() != "msgpack" &&
+		section.Key("serializer").String() != "cbor" &&
+		section.Key("serializer").String() != "" {
+		return nil, fmt.Errorf("serailizer must be json, msgpack or cbor")
+	}
+	clientInfo.Serializer = getSerializerByName(section.Key("serializer").Validate(func(s string) string {
+		if len(s) == 0 {
+			return "json"
+		}
+		return s
+	}))
 	clientInfo.Authid = section.Key("authid").String()
 	clientInfo.Authrole = section.Key("authrole").String()
 	clientInfo.AuthMethod = section.Key("authmethod").String()

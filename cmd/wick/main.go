@@ -67,8 +67,9 @@ var (
 		Envar("WICK_TICKET").String()
 	serializer = kingpin.Flag("serializer", "The serializer to use.").Envar("WICK_SERIALIZER").
 			Default("json").Enum("json", "msgpack", "cbor")
-	profile = kingpin.Flag("profile", "").Envar("WICK_PROFILE").String()
-	debug   = kingpin.Flag("debug", "Enable debug logging.").Bool()
+	profile       = kingpin.Flag("profile", "Get details from section in '$HOME/.wick/config'").Envar("WICK_PROFILE").String()
+	profileCreate = kingpin.Flag("profile-create", "Create section in '$HOME/.wick/config' and use details in that section.").Bool()
+	debug         = kingpin.Flag("debug", "Enable debug logging.").Bool()
 
 	join             = kingpin.Command("join-only", "Start wamp session.")
 	joinSessionCount = join.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
@@ -153,10 +154,15 @@ func main() {
 		*authMethod = selectAuthMethod(*privateKey, *ticket, *secret)
 	}
 
-	var clientInfo *core.ClientInfo
+	clientInfo := &core.ClientInfo{}
+	var err error
 	if *profile != "" {
-		var err error
 		clientInfo, err = readFromProfile(*profile)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	} else if *profileCreate {
+		clientInfo, err = getInputFromUser()
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -218,7 +224,7 @@ func main() {
 		}
 
 	case subscribe.FullCommand():
-		if err := validateData(*subscribeSessionCount, *concurrentSubscribe, *keepaliveSubscribe); err != nil {
+		if err = validateData(*subscribeSessionCount, *concurrentSubscribe, *keepaliveSubscribe); err != nil {
 			log.Fatalln(err)
 		}
 		if *subscribeEventCount < 0 {

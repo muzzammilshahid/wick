@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/gammazero/nexus/v3 v3.0.3
 	github.com/stretchr/testify v1.7.0
+	github.com/tcnksm/go-input v0.0.0-20180404061846-548a7d7a8ee8
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 	gopkg.in/ini.v1 v1.66.6
