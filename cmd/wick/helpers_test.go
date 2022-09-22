@@ -134,7 +134,7 @@ func TestSessions(t *testing.T) {
 		require.NoError(t, err)
 
 		startTime = time.Now().UnixMilli()
-		sessions, err = getSessions(testClientInfo, sessionCount, testConcurrency, false, 0)
+		sessions, err = getSessions(testClientInfo, sessionCount, 10000, false, 0)
 		timeCon := time.Now().UnixMilli() - startTime
 		defer func() {
 			wp := workerpool.New(len(sessions))
