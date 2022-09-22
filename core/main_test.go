@@ -177,7 +177,7 @@ func TestSubscribe(t *testing.T) {
 	assert.NoError(t, err, fmt.Sprintf("error in getting session: %s\n", err))
 	defer session.Close()
 
-	err = Subscribe(session, testTopic, nil, false, false)
+	err = Subscribe(session, testTopic, nil, false, false, nil)
 	require.NoError(t, err, fmt.Sprintf("error in subscribing: %s\n", err))
 
 	err = session.Unsubscribe(testTopic)
