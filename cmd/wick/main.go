@@ -182,7 +182,7 @@ func main() {
 
 	switch cmd {
 	case join.FullCommand():
-		if err := validateData(*joinSessionCount, *concurrentJoin, *keepaliveJoin); err != nil {
+		if err = validateData(*joinSessionCount, *concurrentJoin, *keepaliveJoin); err != nil {
 			log.Fatalln(err)
 		}
 
@@ -307,7 +307,7 @@ func main() {
 		}
 
 	case publish.FullCommand():
-		if err := validateData(*publishSessionCount, *concurrentPublish, *keepalivePublish); err != nil {
+		if err = validateData(*publishSessionCount, *concurrentPublish, *keepalivePublish); err != nil {
 			log.Fatalln(err)
 		}
 
@@ -352,7 +352,7 @@ func main() {
 		wp.StopWait()
 
 	case register.FullCommand():
-		if err := validateData(*registerSessionCount, *concurrentRegister, *keepaliveRegister); err != nil {
+		if err = validateData(*registerSessionCount, *concurrentRegister, *keepaliveRegister); err != nil {
 			log.Fatalln(err)
 		}
 
@@ -407,7 +407,7 @@ func main() {
 		}
 
 	case call.FullCommand():
-		if err := validateData(*callSessionCount, *concurrentCalls, *keepaliveCall); err != nil {
+		if err = validateData(*callSessionCount, *concurrentCalls, *keepaliveCall); err != nil {
 			log.Fatalln(err)
 		}
 

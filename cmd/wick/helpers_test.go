@@ -26,13 +26,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/gammazero/workerpool"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/gammazero/nexus/v3/router"
 	"github.com/gammazero/nexus/v3/transport/serialize"
 	"github.com/gammazero/nexus/v3/wamp"
+	"github.com/gammazero/workerpool"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -113,6 +114,41 @@ func TestSessions(t *testing.T) {
 		}()
 		require.NoError(t, err)
 		require.Equal(t, sessionCount, len(sessions))
+	})
+
+	t.Run("TestConcurrency", func(t *testing.T) {
+		startTime := time.Now().UnixMilli()
+		sessions, err := getSessions(testClientInfo, sessionCount, 1, false, 0)
+		timeSeq := time.Now().UnixMilli() - startTime
+		defer func() {
+			wp := workerpool.New(len(sessions))
+			for _, sess := range sessions {
+				s := sess
+				wp.Submit(func() {
+					// Close the connection to the router
+					s.Close()
+				})
+			}
+			wp.StopWait()
+		}()
+		require.NoError(t, err)
+
+		startTime = time.Now().UnixMilli()
+		sessions, err = getSessions(testClientInfo, sessionCount, testConcurrency, false, 0)
+		timeCon := time.Now().UnixMilli() - startTime
+		defer func() {
+			wp := workerpool.New(len(sessions))
+			for _, sess := range sessions {
+				s := sess
+				wp.Submit(func() {
+					// Close the connection to the router
+					s.Close()
+				})
+			}
+			wp.StopWait()
+		}()
+		require.NoError(t, err)
+		require.Greater(t, timeSeq, timeCon, "concurrent calls must take less time")
 	})
 }
 
