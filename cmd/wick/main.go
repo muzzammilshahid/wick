@@ -67,16 +67,15 @@ var (
 		Envar("WICK_TICKET").String()
 	serializer = kingpin.Flag("serializer", "The serializer to use.").Envar("WICK_SERIALIZER").
 			Default("json").Enum("json", "msgpack", "cbor")
-	profile       = kingpin.Flag("profile", "Get details from section in '$HOME/.wick/config'").Envar("WICK_PROFILE").String()
-	profileCreate = kingpin.Flag("profile-create", "Create section in '$HOME/.wick/config' and use details in that section.").Bool()
-	debug         = kingpin.Flag("debug", "Enable debug logging.").Bool()
+	profile = kingpin.Flag("profile", "Get details from in '$HOME/.wick/config'.For default section use 'DEFAULT'.").Envar("WICK_PROFILE").String()
+	debug   = kingpin.Flag("debug", "Enable debug logging.").Bool()
 
 	join             = kingpin.Command("join-only", "Start wamp session.")
-	joinSessionCount = join.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
+	joinSessionCount = join.Flag("parallel", "Start requested number of wamp sessions.").Default("1").Int()
 	concurrentJoin   = join.Flag("concurrency", "Start wamp session concurrently. "+
-		"Only effective when called with --parallel").Default("1").Int()
+		"Only effective when called with --parallel.").Default("1").Int()
 	logJoinTime   = join.Flag("time", "Log session join time").Bool()
-	keepaliveJoin = join.Flag("keepalive", "interval between websocket pings.").Default("0").Int()
+	keepaliveJoin = join.Flag("keepalive", "Interval between websocket pings.").Default("0").Int()
 
 	subscribe             = kingpin.Command("subscribe", "Subscribe a topic.")
 	subscribeTopic        = subscribe.Arg("topic", "Topic to subscribe.").Required().String()
@@ -86,8 +85,8 @@ var (
 	logSubscribeTime      = subscribe.Flag("time", "Log time to join session and subscribe a topic.").Bool()
 	concurrentSubscribe   = subscribe.Flag("concurrency", "Subscribe to topic concurrently. "+
 		"Only effective when called with --parallel.").Default("1").Int()
-	subscribeSessionCount = subscribe.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
-	keepaliveSubscribe    = subscribe.Flag("keepalive", "interval between websocket pings.").Default("0").Int()
+	subscribeSessionCount = subscribe.Flag("parallel", "Start requested number of wamp sessions.").Default("1").Int()
+	keepaliveSubscribe    = subscribe.Flag("keepalive", "Interval between websocket pings.").Default("0").Int()
 
 	publish            = kingpin.Command("publish", "Publish to a topic.")
 	publishTopic       = publish.Arg("topic", "Topic to publish.").Required().String()
@@ -100,7 +99,7 @@ var (
 	concurrentPublish  = publish.Flag("concurrency", "Publish to the topic concurrently. "+
 		"Only effective when called with --repeat and/or --parallel.").Default("1").Int()
 	publishSessionCount = publish.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
-	keepalivePublish    = publish.Flag("keepalive", "interval between websocket pings.").Default("0").Int()
+	keepalivePublish    = publish.Flag("keepalive", "Interval between websocket pings.").Default("0").Int()
 
 	register           = kingpin.Command("register", "Register a procedure.")
 	registerProcedure  = register.Arg("procedure", "Procedure name.").Required().String()
@@ -111,8 +110,8 @@ var (
 	logRegisterTime    = register.Flag("time", "Log time to join session and register procedure.").Bool()
 	concurrentRegister = register.Flag("concurrency", "Register procedure concurrently. "+
 		"Only effective when called with --parallel.").Default("1").Int()
-	registerSessionCount = register.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
-	keepaliveRegister    = register.Flag("keepalive", "interval between websocket pings.").Default("0").Int()
+	registerSessionCount = register.Flag("parallel", "Start requested number of wamp sessions.").Default("1").Int()
+	keepaliveRegister    = register.Flag("keepalive", "Interval between websocket pings.").Default("0").Int()
 
 	call            = kingpin.Command("call", "Call a procedure.")
 	callProcedure   = call.Arg("procedure", "Procedure to call.").Required().String()
@@ -124,8 +123,8 @@ var (
 	callOptions     = call.Flag("option", "Procedure call option. (May be provided multiple times)").Short('o').StringMap()
 	concurrentCalls = call.Flag("concurrency", "Make concurrent calls without waiting for the result for each to return. "+
 		"Only effective when called with --repeat and/or --parallel.").Default("1").Int()
-	callSessionCount = call.Flag("parallel", "Start requested number of wamp sessions").Default("1").Int()
-	keepaliveCall    = call.Flag("keepalive", "interval between websocket pings.").Default("0").Int()
+	callSessionCount = call.Flag("parallel", "Start requested number of wamp sessions.").Default("1").Int()
+	keepaliveCall    = call.Flag("keepalive", "Interval between websocket pings.").Default("0").Int()
 
 	keyGen     = kingpin.Command("keygen", "Generate ed25519 keypair.").Hidden()
 	saveToFile = keyGen.Flag("output-file", "Write keys to file.").Short('o').Hidden().Bool()
@@ -158,11 +157,6 @@ func main() {
 	var err error
 	if *profile != "" {
 		clientInfo, err = readFromProfile(*profile)
-		if err != nil {
-			log.Fatalln(err)
-		}
-	} else if *profileCreate {
-		clientInfo, err = getInputFromUser()
 		if err != nil {
 			log.Fatalln(err)
 		}
