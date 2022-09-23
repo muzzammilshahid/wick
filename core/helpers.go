@@ -208,7 +208,7 @@ func shellOut(command string) (string, string, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	var cmd *exec.Cmd
-	cmd = exec.Command("bash", "-c", command)
+	cmd = exec.Command("sh", "-c", command)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()

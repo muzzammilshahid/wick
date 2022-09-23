@@ -109,18 +109,18 @@ func readFromProfile(profile string) (*core.ClientInfo, error) {
 		}
 		return s
 	})
-	if section.Key("serializer").String() != "json" &&
-		section.Key("serializer").String() != "msgpack" &&
-		section.Key("serializer").String() != "cbor" &&
-		section.Key("serializer").String() != "" {
+	switch section.Key("serializer").String() {
+	case "msgpack", "cbor", "json", "":
+		clientInfo.Serializer = getSerializerByName(section.Key("serializer").Validate(func(s string) string {
+			if len(s) == 0 {
+				return "json"
+			}
+			return s
+		}))
+	default:
 		return nil, fmt.Errorf("serailizer must be json, msgpack or cbor")
 	}
-	clientInfo.Serializer = getSerializerByName(section.Key("serializer").Validate(func(s string) string {
-		if len(s) == 0 {
-			return "json"
-		}
-		return s
-	}))
+
 	clientInfo.Authid = section.Key("authid").String()
 	clientInfo.Authrole = section.Key("authrole").String()
 	clientInfo.AuthMethod = section.Key("authmethod").String()
@@ -169,33 +169,24 @@ func connect(clientInfo *core.ClientInfo, logTime bool, keepalive int) (*client.
 			return nil, fmt.Errorf("secret not needed for anonymous auth")
 		}
 		session, err = coreConnectAnonymous(clientInfo, keepalive)
-		if err != nil {
-			return nil, err
-		}
 	case "ticket":
 		if clientInfo.Ticket == "" {
 			return nil, fmt.Errorf("must provide ticket when authMethod is ticket")
 		}
 		session, err = coreConnectTicket(clientInfo, keepalive)
-		if err != nil {
-			return nil, err
-		}
 	case "wampcra":
 		if clientInfo.Secret == "" {
 			return nil, fmt.Errorf("must provide secret when authMethod is wampcra")
 		}
 		session, err = coreConnectCRA(clientInfo, keepalive)
-		if err != nil {
-			return nil, err
-		}
 	case "cryptosign":
 		if clientInfo.PrivateKey == "" {
 			return nil, fmt.Errorf("must provide private key when authMethod is cryptosign")
 		}
 		session, err = coreConnectCryptoSign(clientInfo, keepalive)
-		if err != nil {
-			return nil, err
-		}
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	if logTime {
