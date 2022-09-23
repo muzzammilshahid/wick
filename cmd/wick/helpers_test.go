@@ -55,12 +55,6 @@ var (
 	testConcurrency = 100
 )
 
-var logger *log.Logger
-
-func init() {
-	logger = log.New()
-}
-
 func startWsServer() (router.Router, io.Closer, error) {
 	realmConfig := &router.RealmConfig{
 		URI:              wamp.URI(testRealm),
@@ -72,7 +66,7 @@ func startWsServer() (router.Router, io.Closer, error) {
 	config := &router.Config{
 		RealmConfigs: []*router.RealmConfig{realmConfig},
 	}
-	rout, err := router.NewRouter(config, logger)
+	rout, err := router.NewRouter(config, log.New())
 	if err != nil {
 		return nil, nil, err
 	}
