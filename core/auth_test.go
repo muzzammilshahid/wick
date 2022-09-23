@@ -22,7 +22,7 @@
 *
  */
 
-package core
+package core_test
 
 import (
 	"testing"
@@ -31,6 +31,8 @@ import (
 	"github.com/gammazero/nexus/v3/transport/serialize"
 	"github.com/gammazero/nexus/v3/wamp"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/s-things/wick/core"
 )
 
 var (
@@ -53,7 +55,7 @@ func checkBaseConfig(cfg client.Config, t *testing.T) {
 }
 
 func TestAnonymousConfig(t *testing.T) {
-	cfg := getAnonymousAuthConfig(realm, serializer, authId, authRole, keepaliveInterval)
+	cfg := core.GetAnonymousAuthConfig(realm, serializer, authId, authRole, keepaliveInterval)
 
 	checkBaseConfig(cfg, t)
 
@@ -63,7 +65,7 @@ func TestAnonymousConfig(t *testing.T) {
 }
 
 func TestTicketConfig(t *testing.T) {
-	cfg := getTicketAuthConfig(realm, serializer, authId, authRole, secret, keepaliveInterval)
+	cfg := core.GetTicketAuthConfig(realm, serializer, authId, authRole, secret, keepaliveInterval)
 
 	checkBaseConfig(cfg, t)
 
@@ -74,7 +76,7 @@ func TestTicketConfig(t *testing.T) {
 }
 
 func TestCRAConfig(t *testing.T) {
-	cfg := getCRAAuthConfig(realm, serializer, authId, authRole, secret, keepaliveInterval)
+	cfg := core.GetCRAAuthConfig(realm, serializer, authId, authRole, secret, keepaliveInterval)
 
 	checkBaseConfig(cfg, t)
 
@@ -85,7 +87,7 @@ func TestCRAConfig(t *testing.T) {
 }
 
 func TestCryptoSignConfig(t *testing.T) {
-	cfg := getCryptosignAuthConfig(realm, serializer, authId, authRole, privateKeyHex, keepaliveInterval)
+	cfg := core.GetCryptosignAuthConfig(realm, serializer, authId, authRole, privateKeyHex, keepaliveInterval)
 
 	checkBaseConfig(cfg, t)
 
@@ -96,8 +98,8 @@ func TestCryptoSignConfig(t *testing.T) {
 }
 
 func TestHandleCryptosign(t *testing.T) {
-	_, pvk := getKeyPair(privateKeyHex)
-	callable := handleCryptosign(pvk)
+	_, pvk := core.GetKeyPair(privateKeyHex)
+	callable := core.HandleCryptosign(pvk)
 
 	challengeHex := "a1d483092ec08960fedbaed2bc1d411568a59077b794210e251bd3abb1563f7c"
 	signedHex := "906b90ae9b8ebb76c0005e2092ea3c77e3d832d841909c18dd25a9d8c87681337a6fd9938c38f7c77216cd5915e7396e942ed4de2eee71d4068f4cc12cb6a40a"

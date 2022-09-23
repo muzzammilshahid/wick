@@ -22,7 +22,7 @@
 *
  */
 
-package main
+package main_test
 
 import (
 	"fmt"
@@ -38,6 +38,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	main "github.com/s-things/wick/cmd/wick"
 	"github.com/s-things/wick/core"
 )
 
@@ -87,14 +88,14 @@ func TestSessions(t *testing.T) {
 	defer wsCloser.Close()
 
 	t.Run("TestConnect", func(t *testing.T) {
-		session, err := connect(testClientInfo, false, 1)
+		session, err := main.Connect(testClientInfo, false, 1)
 		defer session.Close()
 		require.NoError(t, err)
 		require.Equal(t, true, session.Connected(), "get already closed session")
 	})
 
 	t.Run("TestGetSessions", func(t *testing.T) {
-		sessions, err := getSessions(testClientInfo, sessionCount, testConcurrency, false, 0)
+		sessions, err := main.GetSessions(testClientInfo, sessionCount, testConcurrency, false, 0)
 		defer func() {
 			wp := workerpool.New(len(sessions))
 			for _, sess := range sessions {
@@ -112,7 +113,7 @@ func TestSessions(t *testing.T) {
 
 	t.Run("TestConcurrency", func(t *testing.T) {
 		startTime := time.Now().UnixMilli()
-		sessions, err := getSessions(testClientInfo, sessionCount, 1, false, 0)
+		sessions, err := main.GetSessions(testClientInfo, sessionCount, 1, false, 0)
 		timeSeq := time.Now().UnixMilli() - startTime
 		defer func() {
 			wp := workerpool.New(len(sessions))
@@ -128,7 +129,7 @@ func TestSessions(t *testing.T) {
 		require.NoError(t, err)
 
 		startTime = time.Now().UnixMilli()
-		sessions, err = getSessions(testClientInfo, sessionCount, 1000, false, 0)
+		sessions, err = main.GetSessions(testClientInfo, sessionCount, 1000, false, 0)
 		timeCon := time.Now().UnixMilli() - startTime
 		defer func() {
 			wp := workerpool.New(len(sessions))
@@ -157,7 +158,7 @@ func TestSerializerSelect(t *testing.T) {
 		{"msgpack", serialize.MSGPACK, fmt.Sprintf("invalid serializer id for msgpack, expected=%d", serialize.MSGPACK)},
 		{"halo", -1, "should not accept as only anonymous,ticket,wampcra,cryptosign are allowed"},
 	} {
-		serializerId := getSerializerByName(data.name)
+		serializerId := main.GetSerializerByName(data.name)
 		assert.Equal(t, data.expectedSerializer, serializerId, data.message)
 	}
 }
@@ -174,7 +175,7 @@ func TestSelectAuthMethod(t *testing.T) {
 		{"", "", "williamsburg", "wampcra"},
 		{"", "", "", "anonymous"},
 	} {
-		method := selectAuthMethod(data.privateKey, data.ticket, data.secret)
+		method := main.SelectAuthMethod(data.privateKey, data.ticket, data.secret)
 		assert.Equal(t, data.expectedMethod, method, "problem in choosing auth method")
 	}
 }

@@ -1,17 +1,19 @@
-package core
+package core_test
 
 import (
 	"context"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"testing"
 	"time"
 
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/router"
 	"github.com/gammazero/nexus/v3/wamp"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/s-things/wick/core"
 )
 
 const (
@@ -74,7 +76,7 @@ func TestRegisterDelay(t *testing.T) {
 	defer session.Close()
 
 	go func() {
-		err = Register(session, testProcedure, "", delay, 0, nil, false)
+		err = core.Register(session, testProcedure, "", delay, 0, nil, false)
 		assert.NoError(t, err, fmt.Sprintf("error in registering procedure: %s\n", err))
 	}()
 
@@ -94,7 +96,7 @@ func TestRegisterInvokeCount(t *testing.T) {
 	defer sessionCall.Close()
 	defer rout.Close()
 
-	err = Register(sessionRegister, testProcedure, "", 0, invokeCount, nil, false)
+	err = core.Register(sessionRegister, testProcedure, "", 0, invokeCount, nil, false)
 	require.NoError(t, err, fmt.Sprintf("error in registering procedure: %s\n", err))
 
 	for i := 0; i < invokeCount; i++ {
@@ -112,13 +114,13 @@ func TestRegisterOnInvocationCmd(t *testing.T) {
 	defer sessionCall.Close()
 	defer rout.Close()
 
-	err = Register(sessionRegister, testProcedure, "pwd", 0, 0, nil, false)
+	err = core.Register(sessionRegister, testProcedure, "pwd", 0, 0, nil, false)
 	require.NoError(t, err, fmt.Sprintf("error in registering procedure: %s\n", err))
 
 	result, err := sessionCall.Call(context.Background(), testProcedure, nil, nil, nil, nil)
 	require.NoError(t, err, fmt.Sprintf("error in calling procedure: %s\n", err))
 
-	out, _, _ := shellOut("pwd")
+	out, _, _ := core.ShellOut("pwd")
 	require.Equal(t, out, result.Arguments[0], "invalid call results")
 }
 
@@ -141,7 +143,7 @@ func TestCallDelayRepeatConcurrency(t *testing.T) {
 
 	t.Run("TestCallDelay", func(t *testing.T) {
 		go func() {
-			err = Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, 1, 1000, 0, nil)
+			err = core.Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, 1, 1000, 0, nil)
 			require.NoError(t, err, fmt.Sprintf("error in calling procedure: %s\n", err))
 		}()
 		require.Equal(t, 0, iterator, "procedure called without delay")
@@ -153,7 +155,7 @@ func TestCallDelayRepeatConcurrency(t *testing.T) {
 	var timeRepeat int64
 	t.Run("TestCallRepeat", func(t *testing.T) {
 		startTime := time.Now().UnixMilli()
-		err = Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, repeatCount, 0, 0, nil)
+		err = core.Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, repeatCount, 0, 0, nil)
 		timeRepeat = time.Now().UnixMilli() - startTime
 		require.NoError(t, err, fmt.Sprintf("error in calling procedure: %s\n", err))
 		require.Equal(t, 1000, iterator, "procedure not correctly called repeatedly")
@@ -161,7 +163,7 @@ func TestCallDelayRepeatConcurrency(t *testing.T) {
 
 	t.Run("TestCallConcurrency", func(t *testing.T) {
 		startTime := time.Now().UnixMilli()
-		err = Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, repeatCount, 0, 100, nil)
+		err = core.Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, repeatCount, 0, 100, nil)
 		timeConcurrentCalls := time.Now().UnixMilli() - startTime
 		require.NoError(t, err, fmt.Sprintf("error in calling procedure: %s\n", err))
 		require.Greater(t, timeRepeat, timeConcurrentCalls, "concurrency not works correctly")
@@ -177,7 +179,7 @@ func TestSubscribe(t *testing.T) {
 	assert.NoError(t, err, fmt.Sprintf("error in getting session: %s\n", err))
 	defer session.Close()
 
-	err = Subscribe(session, testTopic, nil, false, false, nil)
+	err = core.Subscribe(session, testTopic, nil, false, false, nil)
 	require.NoError(t, err, fmt.Sprintf("error in subscribing: %s\n", err))
 
 	err = session.Unsubscribe(testTopic)
@@ -202,7 +204,7 @@ func TestPublishDelayRepeatConcurrency(t *testing.T) {
 
 	t.Run("TestPublishDelay", func(t *testing.T) {
 		go func() {
-			err = Publish(sessionPublish, testTopic, nil, nil, nil, false, 1, 1000, 1)
+			err = core.Publish(sessionPublish, testTopic, nil, nil, nil, false, 1, 1000, 1)
 			require.NoError(t, err, fmt.Sprintf("error in publishing: %s\n", err))
 		}()
 		require.Equal(t, 0, iterator, "topic published without delay")
@@ -214,7 +216,7 @@ func TestPublishDelayRepeatConcurrency(t *testing.T) {
 	var timeRepeat int64
 	t.Run("TestPublishRepeat", func(t *testing.T) {
 		startTime := time.Now().UnixMilli()
-		err = Publish(sessionPublish, testTopic, []string{"Hello", "1"}, nil, nil, false, repeatPublish, 0, 1)
+		err = core.Publish(sessionPublish, testTopic, []string{"Hello", "1"}, nil, nil, false, repeatPublish, 0, 1)
 		timeRepeat = time.Now().UnixMilli() - startTime
 		require.NoError(t, err, fmt.Sprintf("error in publishing topic: %s\n", err))
 		require.Equal(t, repeatPublish, iterator, "topic not correctly publish repeatedly")
@@ -222,7 +224,7 @@ func TestPublishDelayRepeatConcurrency(t *testing.T) {
 
 	t.Run("TestPublishConcurrency", func(t *testing.T) {
 		startTime := time.Now().UnixMilli()
-		err = Publish(sessionPublish, testTopic, []string{"Hello", "1"}, nil, nil, false, repeatPublish, 0, 10000)
+		err = core.Publish(sessionPublish, testTopic, []string{"Hello", "1"}, nil, nil, false, repeatPublish, 0, 10000)
 		timeConcurrentCalls := time.Now().UnixMilli() - startTime
 		require.NoError(t, err, fmt.Sprintf("error in publish ro topic: %s\n", err))
 		require.Greater(t, timeRepeat, timeConcurrentCalls, "concurrency not works correctly")

@@ -22,7 +22,7 @@
 *
  */
 
-package core
+package core_test
 
 import (
 	"testing"
@@ -30,6 +30,8 @@ import (
 	"github.com/gammazero/nexus/v3/wamp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/s-things/wick/core"
 )
 
 const (
@@ -37,7 +39,7 @@ const (
 )
 
 func TestPrivateHexToKeyPair(t *testing.T) {
-	publicKey, privateKey := getKeyPair(privateKeyHex)
+	publicKey, privateKey := core.GetKeyPair(privateKeyHex)
 
 	assert.NotNil(t, publicKey, "public key is nil")
 	assert.NotNil(t, privateKey, "private key is nil")
@@ -97,7 +99,7 @@ args:
 		{wamp.List{}, wamp.Dict{}, nil, `args: []
 kwargs: {}`},
 	} {
-		outputString, err := argsKWArgs(data.args, data.kwargs, data.details)
+		outputString, err := core.ArgsKWArgs(data.args, data.kwargs, data.details)
 		require.NoError(t, err)
 		assert.Equal(t, outputString, data.expectedResult)
 	}
@@ -118,7 +120,7 @@ func TestProgressArgsKWArgs(t *testing.T) {
 		{wamp.List{}, wamp.Dict{}, `args: [] kwargs: {}
 `},
 	} {
-		outputString, err := progressArgsKWArgs(data.args, data.kwargs)
+		outputString, err := core.ProgressArgsKWArgs(data.args, data.kwargs)
 		require.NoError(t, err)
 		assert.Equal(t, outputString, data.expectedResult)
 	}
@@ -132,7 +134,7 @@ func TestUrlSanitization(t *testing.T) {
 		{"rs://localhost:8080/", "tcp://localhost:8080/"},
 		{"rss://localhost:8080/", "tcp://localhost:8080/"},
 	} {
-		url := sanitizeURL(data.url)
+		url := core.SanitizeURL(data.url)
 		assert.Equal(t, data.sanitizedUrl, url, "url sanitization failed")
 	}
 }
@@ -142,7 +144,7 @@ func TestListToWampList(t *testing.T) {
 		`{"firstKey":"value", "secondKey":2}`,
 		`[{"firstKey":"value", "secondKey":2}, {"firstKey":"value", "secondKey":2}]`}
 
-	wampList := listToWampList(inputList)
+	wampList := core.ListToWampList(inputList)
 
 	if len(wampList) != len(inputList) {
 		t.Error("error in list conversion")
@@ -177,7 +179,7 @@ func TestDictToWampDict(t *testing.T) {
 	inputDict := map[string]string{"string": "string", "int": "1", "float": "1.1", "bool": "true",
 		"list": `["group_1","group_2", 1, true]`, "json": `{"firstKey":"value", "secondKey":2}`,
 		"jsonList": `[{"firstKey":"value", "secondKey":2}, {"firstKey":"value", "secondKey":2}]`}
-	wampDict := dictToWampDict(inputDict)
+	wampDict := core.DictToWampDict(inputDict)
 	if len(inputDict) != len(wampDict) {
 		t.Error("error in map conversion")
 	}
