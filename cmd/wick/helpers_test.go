@@ -26,7 +26,7 @@ package main_test
 
 import (
 	"fmt"
-	"io"
+	"net"
 	"testing"
 	"time"
 
@@ -45,7 +45,6 @@ import (
 var (
 	testRealm      = "wick.test"
 	netAddr        = "localhost"
-	wsPort         = 8080
 	testClientInfo = &core.ClientInfo{
 		Url:        "ws://localhost:8080/ws",
 		Realm:      testRealm,
@@ -56,7 +55,19 @@ var (
 	testConcurrency = 100
 )
 
-func startWsServer() (router.Router, io.Closer, error) {
+func getFreePort() (port int, err error) {
+	var a *net.TCPAddr
+	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
+		var l *net.TCPListener
+		if l, err = net.ListenTCP("tcp", a); err == nil {
+			defer l.Close()
+			return l.Addr().(*net.TCPAddr).Port, nil
+		}
+	}
+	return
+}
+
+func startWsServer(t *testing.T) {
 	realmConfig := &router.RealmConfig{
 		URI:              wamp.URI(testRealm),
 		StrictURI:        true,
@@ -68,30 +79,29 @@ func startWsServer() (router.Router, io.Closer, error) {
 		RealmConfigs: []*router.RealmConfig{realmConfig},
 	}
 	rout, err := router.NewRouter(config, log.New())
-	if err != nil {
-		return nil, nil, err
-	}
+	require.NoError(t, err)
 	// Create websocket server.
 	wss := router.NewWebsocketServer(rout)
-	wsAddr := fmt.Sprintf("%s:%d", netAddr, wsPort)
+
+	port, err := getFreePort()
+	require.NoError(t, err)
+	wsAddr := fmt.Sprintf("%s:%d", netAddr, port)
 	wsCloser, err := wss.ListenAndServe(wsAddr)
-	if err != nil {
-		return nil, nil, err
-	}
-	return rout, wsCloser, err
+	require.NoError(t, err)
+	testClientInfo.Url = fmt.Sprintf("ws://%s:%v/ws", netAddr, port)
+	t.Cleanup(func() {
+		wsCloser.Close()
+		rout.Close()
+	})
 }
 
 func TestSessions(t *testing.T) {
-	rout, wsCloser, err := startWsServer()
-	require.NoError(t, err)
-	defer rout.Close()
-	defer wsCloser.Close()
-
+	startWsServer(t)
 	t.Run("TestConnect", func(t *testing.T) {
 		session, err := main.Connect(testClientInfo, false, 1)
-		defer session.Close()
 		require.NoError(t, err)
 		require.Equal(t, true, session.Connected(), "get already closed session")
+		session.Close()
 	})
 
 	t.Run("TestGetSessions", func(t *testing.T) {

@@ -21,7 +21,7 @@ const (
 	testProcedure = "wick.test.procedure"
 	testTopic     = "wick.test.topic"
 	repeatCount   = 1000
-	repeatPublish = 100000
+	repeatPublish = 10000
 	delay         = 1000
 )
 
@@ -224,7 +224,7 @@ func TestPublishDelayRepeatConcurrency(t *testing.T) {
 
 	t.Run("TestPublishConcurrency", func(t *testing.T) {
 		startTime := time.Now().UnixMilli()
-		err = core.Publish(sessionPublish, testTopic, []string{"Hello", "1"}, nil, nil, false, repeatPublish, 0, 10000)
+		err = core.Publish(sessionPublish, testTopic, []string{"Hello", "1"}, nil, nil, false, repeatPublish, 0, 1000)
 		timeConcurrentCalls := time.Now().UnixMilli() - startTime
 		require.NoError(t, err, fmt.Sprintf("error in publish ro topic: %s\n", err))
 		require.Greater(t, timeRepeat, timeConcurrentCalls, "concurrency not works correctly")
