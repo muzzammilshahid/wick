@@ -42,13 +42,6 @@ import (
 )
 
 var (
-	coreSubscribe = core.Subscribe
-	corePublish   = core.Publish
-	coreRegister  = core.Register
-	coreCall      = core.Call
-)
-
-var (
 	url = kingpin.Flag("url", "WAMP URL to connect to.").
 		Default("ws://localhost:8080/ws").Envar("WICK_URL").String()
 	realm = kingpin.Flag("realm", "The WAMP realm to join.").Default("realm1").
@@ -259,7 +252,7 @@ func main() {
 		for _, session := range sessions {
 			sess := session
 			wp.Submit(func() {
-				err := coreSubscribe(sess, *subscribeTopic, *subscribeOptions,
+				err := core.Subscribe(sess, *subscribeTopic, *subscribeOptions,
 					*subscribePrintDetails, *logSubscribeTime, eventC)
 				if err != nil {
 					log.Fatalln(err)
@@ -337,7 +330,7 @@ func main() {
 		for _, session := range sessions {
 			sess := session
 			wp.Submit(func() {
-				if err = corePublish(sess, *publishTopic, *publishArgs, *publishKeywordArgs, *publishOptions, *logPublishTime,
+				if err = core.Publish(sess, *publishTopic, *publishArgs, *publishKeywordArgs, *publishOptions, *logPublishTime,
 					*repeatPublish, *delayPublish, *concurrentPublish); err != nil {
 					log.Fatalln(err)
 				}
@@ -381,7 +374,7 @@ func main() {
 		for _, session := range sessions {
 			sess := session
 			wp.Submit(func() {
-				if err = coreRegister(sess, *registerProcedure, *onInvocationCmd, *delay, *invokeCount, *registerOptions, *logRegisterTime); err != nil {
+				if err = core.Register(sess, *registerProcedure, *onInvocationCmd, *delay, *invokeCount, *registerOptions, *logRegisterTime); err != nil {
 					log.Fatalln(err)
 				}
 			})
@@ -441,7 +434,7 @@ func main() {
 		for _, session := range sessions {
 			sess := session
 			wp.Submit(func() {
-				if err = coreCall(sess, *callProcedure, *callArgs, *callKeywordArgs, *logCallTime, *repeatCount, *delayCall,
+				if err = core.Call(sess, *callProcedure, *callArgs, *callKeywordArgs, *logCallTime, *repeatCount, *delayCall,
 					*concurrentCalls, *callOptions); err != nil {
 					log.Fatalln(err)
 				}

@@ -152,22 +152,12 @@ func TestCallDelayRepeatConcurrency(t *testing.T) {
 		iterator = 0
 	})
 
-	var timeRepeat int64
 	t.Run("TestCallRepeat", func(t *testing.T) {
-		startTime := time.Now().UnixMilli()
 		err = core.Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, repeatCount, 0, 0, nil)
-		timeRepeat = time.Now().UnixMilli() - startTime
 		require.NoError(t, err, fmt.Sprintf("error in calling procedure: %s\n", err))
 		require.Equal(t, 1000, iterator, "procedure not correctly called repeatedly")
 	})
 
-	t.Run("TestCallConcurrency", func(t *testing.T) {
-		startTime := time.Now().UnixMilli()
-		err = core.Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, repeatCount, 0, 100, nil)
-		timeConcurrentCalls := time.Now().UnixMilli() - startTime
-		require.NoError(t, err, fmt.Sprintf("error in calling procedure: %s\n", err))
-		require.Greater(t, timeRepeat, timeConcurrentCalls, "concurrency not works correctly")
-	})
 }
 
 func TestSubscribe(t *testing.T) {
@@ -213,20 +203,9 @@ func TestPublishDelayRepeatConcurrency(t *testing.T) {
 		iterator = 0
 	})
 
-	var timeRepeat int64
 	t.Run("TestPublishRepeat", func(t *testing.T) {
-		startTime := time.Now().UnixMilli()
 		err = core.Publish(sessionPublish, testTopic, []string{"Hello", "1"}, nil, nil, false, repeatPublish, 0, 1)
-		timeRepeat = time.Now().UnixMilli() - startTime
 		require.NoError(t, err, fmt.Sprintf("error in publishing topic: %s\n", err))
 		require.Equal(t, repeatPublish, iterator, "topic not correctly publish repeatedly")
-	})
-
-	t.Run("TestPublishConcurrency", func(t *testing.T) {
-		startTime := time.Now().UnixMilli()
-		err = core.Publish(sessionPublish, testTopic, []string{"Hello", "1"}, nil, nil, false, repeatPublish, 0, 1000)
-		timeConcurrentCalls := time.Now().UnixMilli() - startTime
-		require.NoError(t, err, fmt.Sprintf("error in publish ro topic: %s\n", err))
-		require.Greater(t, timeRepeat, timeConcurrentCalls, "concurrency not works correctly")
 	})
 }

@@ -28,7 +28,6 @@ import (
 	"fmt"
 	"net"
 	"testing"
-	"time"
 
 	"github.com/gammazero/nexus/v3/router"
 	"github.com/gammazero/nexus/v3/transport/serialize"
@@ -119,41 +118,6 @@ func TestSessions(t *testing.T) {
 		}()
 		require.NoError(t, err)
 		require.Equal(t, sessionCount, len(sessions))
-	})
-
-	t.Run("TestConcurrency", func(t *testing.T) {
-		startTime := time.Now().UnixMilli()
-		sessions, err := main.GetSessions(testClientInfo, sessionCount, 1, false, 0)
-		timeSeq := time.Now().UnixMilli() - startTime
-		defer func() {
-			wp := workerpool.New(len(sessions))
-			for _, sess := range sessions {
-				s := sess
-				wp.Submit(func() {
-					// Close the connection to the router
-					s.Close()
-				})
-			}
-			wp.StopWait()
-		}()
-		require.NoError(t, err)
-
-		startTime = time.Now().UnixMilli()
-		sessions, err = main.GetSessions(testClientInfo, sessionCount, 1000, false, 0)
-		timeCon := time.Now().UnixMilli() - startTime
-		defer func() {
-			wp := workerpool.New(len(sessions))
-			for _, sess := range sessions {
-				s := sess
-				wp.Submit(func() {
-					// Close the connection to the router
-					s.Close()
-				})
-			}
-			wp.StopWait()
-		}()
-		require.NoError(t, err)
-		require.Greater(t, timeSeq, timeCon, "concurrent calls must take less time")
 	})
 }
 

@@ -87,7 +87,7 @@ func validateData(sessionCount int, concurrency int, keepAlive int) error {
 
 func readFromProfile(profile string) (*core.ClientInfo, error) {
 	clientInfo := &core.ClientInfo{}
-	cfg, err := ini.Load(fmt.Sprintf("%s/.wick/config", os.Getenv("HOME")))
+	cfg, err := ini.Load(os.ExpandEnv("$HOME/.wick/config"))
 	if err != nil {
 		return nil, fmt.Errorf("fail to read config: %v", err)
 	}

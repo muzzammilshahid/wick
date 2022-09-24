@@ -12,5 +12,5 @@ var (
 	SanitizeURL             = sanitizeURL
 	ListToWampList          = listToWampList
 	DictToWampDict          = dictToWampDict
-	ShellOut = shellOut
+	ShellOut                = shellOut
 )
