@@ -78,10 +78,12 @@ func ConnectCRA(clientInfo *ClientInfo, keepaliveInterval int) (*client.Client, 
 }
 
 func ConnectCryptoSign(clientInfo *ClientInfo, keepaliveInterval int) (*client.Client, error) {
-	cfg := getCryptosignAuthConfig(clientInfo.Realm, clientInfo.Serializer, clientInfo.Authid,
+	cfg, err := getCryptosignAuthConfig(clientInfo.Realm, clientInfo.Serializer, clientInfo.Authid,
 		clientInfo.Authrole, clientInfo.PrivateKey, keepaliveInterval)
-
-	return connect(clientInfo.Url, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return connect(clientInfo.Url, *cfg)
 }
 
 func Subscribe(session *client.Client, topic string, subscribeOptions map[string]string,
@@ -117,27 +119,15 @@ func Subscribe(session *client.Client, topic string, subscribeOptions map[string
 	return nil
 }
 
-func actualPublish(session *client.Client, topic string, args wamp.List, kwargs wamp.Dict, logPublishTime bool,
+func actualPublish(session *client.Client, topic string, args wamp.List, kwargs wamp.Dict,
 	delayPublish int, publishOptions wamp.Dict) error {
 	if delayPublish > 0 {
 		time.Sleep(time.Duration(delayPublish) * time.Millisecond)
 	}
 
-	var startTime int64
-	if logPublishTime {
-		startTime = time.Now().UnixMilli()
-	}
-
 	// Publish to topic.
 	if err := session.Publish(topic, publishOptions, args, kwargs); err != nil {
 		return err
-	}
-
-	if logPublishTime {
-		endTime := time.Now().UnixMilli()
-		log.Debugf("Published to topic %s in %dms\n", topic, endTime-startTime)
-	} else {
-		log.Debugf("Published to topic '%s'\n", topic)
 	}
 	return nil
 }
@@ -154,14 +144,13 @@ func Publish(session *client.Client, topic string, args []string, kwargs map[str
 	for i := 0; i < repeatPublish; i++ {
 		wp.Submit(func() {
 			err := actualPublish(session, topic, listToWampList(args), dictToWampDict(kwargs),
-				logPublishTime, delayPublish, dictToWampDict(publishOptions))
+				delayPublish, dictToWampDict(publishOptions))
 			resC <- err
 		})
 	}
 	wp.StopWait()
-
-	err := getErrorFromErrorChannel(resC)
-	if err != nil {
+	close(resC)
+	if err := getErrorFromErrorChannel(resC); err != nil {
 		return err
 	}
 
@@ -204,14 +193,9 @@ func Register(session *client.Client, procedure string, command string, delay in
 }
 
 func actuallyCall(session *client.Client, procedure string, args wamp.List, kwargs wamp.Dict,
-	logCallTime bool, delayCall int, callOptions wamp.Dict) (*wamp.Result, error) {
+	delayCall int, callOptions wamp.Dict) (*wamp.Result, error) {
 	if delayCall > 0 {
 		time.Sleep(time.Duration(delayCall) * time.Millisecond)
-	}
-
-	var startTime int64
-	if logCallTime {
-		startTime = time.Now().UnixMilli()
 	}
 
 	var result *wamp.Result
@@ -237,10 +221,6 @@ func actuallyCall(session *client.Client, procedure string, args wamp.List, kwar
 		fmt.Println(string(buffer.Bytes()))
 	}
 
-	if logCallTime {
-		endTime := time.Now().UnixMilli()
-		log.Debugf("call took %dms\n", endTime-startTime)
-	}
 	return result, nil
 }
 
@@ -257,14 +237,13 @@ func Call(session *client.Client, procedure string, args []string, kwargs map[st
 	for i := 0; i < repeatCount; i++ {
 		wp.Submit(func() {
 			_, err := actuallyCall(session, procedure, listToWampList(args), dictToWampDict(kwargs),
-				logCallTime, delayCall, dictToWampDict(callOptions))
+				delayCall, dictToWampDict(callOptions))
 			resC <- err
 		})
 	}
 	wp.StopWait()
-
-	err := getErrorFromErrorChannel(resC)
-	if err != nil {
+	close(resC)
+	if err := getErrorFromErrorChannel(resC); err != nil {
 		return err
 	}
 

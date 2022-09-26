@@ -29,22 +29,13 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/transport/serialize"
 	"github.com/gammazero/workerpool"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/ini.v1"
 
 	"github.com/s-things/wick/core"
-)
-
-var (
-	coreConnectAnonymous  = core.ConnectAnonymous
-	coreConnectTicket     = core.ConnectTicket
-	coreConnectCRA        = core.ConnectCRA
-	coreConnectCryptoSign = core.ConnectCryptoSign
 )
 
 func getSerializerByName(name string) serialize.Serialization {
@@ -109,14 +100,13 @@ func readFromProfile(profile string) (*core.ClientInfo, error) {
 		}
 		return s
 	})
-	switch section.Key("serializer").String() {
-	case "msgpack", "cbor", "json", "":
-		clientInfo.Serializer = getSerializerByName(section.Key("serializer").Validate(func(s string) string {
-			if len(s) == 0 {
-				return "json"
-			}
-			return s
-		}))
+	serializer := section.Key("serializer").String()
+	switch serializer {
+	case "msgpack", "cbor", "json":
+		clientInfo.Serializer = getSerializerByName(serializer)
+	case "":
+		// default to json if none was provided
+		clientInfo.Serializer = getSerializerByName("json")
 	default:
 		return nil, fmt.Errorf("serailizer must be json, msgpack or cbor")
 	}
@@ -136,7 +126,6 @@ func readFromProfile(profile string) (*core.ClientInfo, error) {
 }
 
 func getErrorFromErrorChannel(resC chan error) error {
-	close(resC)
 	var errs []string
 	for err := range resC {
 		if err != nil {
@@ -149,14 +138,10 @@ func getErrorFromErrorChannel(resC chan error) error {
 	return nil
 }
 
-func connect(clientInfo *core.ClientInfo, logTime bool, keepalive int) (*client.Client, error) {
+func connect(clientInfo *core.ClientInfo, keepalive int) (*client.Client, error) {
 	var session *client.Client
 	var err error
-	var startTime int64
 
-	if logTime {
-		startTime = time.Now().UnixMilli()
-	}
 	switch clientInfo.AuthMethod {
 	case "anonymous":
 		if clientInfo.PrivateKey != "" {
@@ -168,36 +153,32 @@ func connect(clientInfo *core.ClientInfo, logTime bool, keepalive int) (*client.
 		if clientInfo.Secret != "" {
 			return nil, fmt.Errorf("secret not needed for anonymous auth")
 		}
-		session, err = coreConnectAnonymous(clientInfo, keepalive)
+		session, err = core.ConnectAnonymous(clientInfo, keepalive)
 	case "ticket":
 		if clientInfo.Ticket == "" {
 			return nil, fmt.Errorf("must provide ticket when authMethod is ticket")
 		}
-		session, err = coreConnectTicket(clientInfo, keepalive)
+		session, err = core.ConnectTicket(clientInfo, keepalive)
 	case "wampcra":
 		if clientInfo.Secret == "" {
 			return nil, fmt.Errorf("must provide secret when authMethod is wampcra")
 		}
-		session, err = coreConnectCRA(clientInfo, keepalive)
+		session, err = core.ConnectCRA(clientInfo, keepalive)
 	case "cryptosign":
 		if clientInfo.PrivateKey == "" {
 			return nil, fmt.Errorf("must provide private key when authMethod is cryptosign")
 		}
-		session, err = coreConnectCryptoSign(clientInfo, keepalive)
+		session, err = core.ConnectCryptoSign(clientInfo, keepalive)
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	if logTime {
-		endTime := time.Now().UnixMilli()
-		log.Printf("session joined in %dms\n", endTime-startTime)
-	}
 	return session, err
 }
 
 func getSessions(clientInfo *core.ClientInfo, sessionCount int, concurrency int,
-	logTime bool, keepalive int) ([]*client.Client, error) {
+	keepalive int) ([]*client.Client, error) {
 	var sessions []*client.Client
 	var mutex sync.Mutex
 	var session *client.Client
@@ -206,7 +187,7 @@ func getSessions(clientInfo *core.ClientInfo, sessionCount int, concurrency int,
 	resC := make(chan error, sessionCount)
 	for i := 0; i < sessionCount; i++ {
 		wp.Submit(func() {
-			session, err = connect(clientInfo, logTime, keepalive)
+			session, err = connect(clientInfo, keepalive)
 			mutex.Lock()
 			sessions = append(sessions, session)
 			mutex.Unlock()
@@ -215,6 +196,7 @@ func getSessions(clientInfo *core.ClientInfo, sessionCount int, concurrency int,
 	}
 
 	wp.StopWait()
+	close(resC)
 	if err = getErrorFromErrorChannel(resC); err != nil {
 		return nil, err
 	}

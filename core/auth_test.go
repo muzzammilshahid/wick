@@ -31,6 +31,7 @@ import (
 	"github.com/gammazero/nexus/v3/transport/serialize"
 	"github.com/gammazero/nexus/v3/wamp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/s-things/wick/core"
 )
@@ -87,9 +88,9 @@ func TestCRAConfig(t *testing.T) {
 }
 
 func TestCryptoSignConfig(t *testing.T) {
-	cfg := core.GetCryptosignAuthConfig(realm, serializer, authId, authRole, privateKeyHex, keepaliveInterval)
-
-	checkBaseConfig(cfg, t)
+	cfg, err := core.GetCryptosignAuthConfig(realm, serializer, authId, authRole, privateKeyHex, keepaliveInterval)
+	require.NoError(t, err)
+	checkBaseConfig(*cfg, t)
 
 	_, exists := cfg.AuthHandlers["cryptosign"]
 	if !exists {
@@ -98,7 +99,8 @@ func TestCryptoSignConfig(t *testing.T) {
 }
 
 func TestHandleCryptosign(t *testing.T) {
-	_, pvk := core.GetKeyPair(privateKeyHex)
+	_, pvk, err := core.GetKeyPair(privateKeyHex)
+	require.NoError(t, err)
 	callable := core.HandleCryptosign(pvk)
 
 	challengeHex := "a1d483092ec08960fedbaed2bc1d411568a59077b794210e251bd3abb1563f7c"

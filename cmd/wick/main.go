@@ -177,7 +177,7 @@ func main() {
 		if *logJoinTime {
 			startTime = time.Now().UnixMilli()
 		}
-		sessions, err := getSessions(clientInfo, *joinSessionCount, *concurrentJoin, *logJoinTime, *keepaliveJoin)
+		sessions, err := getSessions(clientInfo, *joinSessionCount, *concurrentJoin, *keepaliveJoin)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -222,7 +222,7 @@ func main() {
 		if *logSubscribeTime {
 			startTime = time.Now().UnixMilli()
 		}
-		sessions, err := getSessions(clientInfo, *subscribeSessionCount, *concurrentSubscribe, *logSubscribeTime, *keepaliveSubscribe)
+		sessions, err := getSessions(clientInfo, *subscribeSessionCount, *concurrentSubscribe, *keepaliveSubscribe)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -305,7 +305,7 @@ func main() {
 		if *logPublishTime {
 			startTime = time.Now().UnixMilli()
 		}
-		sessions, err := getSessions(clientInfo, *publishSessionCount, *concurrentPublish, *logPublishTime, *keepalivePublish)
+		sessions, err := getSessions(clientInfo, *publishSessionCount, *concurrentPublish, *keepalivePublish)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -347,7 +347,7 @@ func main() {
 		if *logRegisterTime {
 			startTime = time.Now().UnixMilli()
 		}
-		sessions, err := getSessions(clientInfo, *registerSessionCount, *concurrentRegister, *logRegisterTime, *keepaliveRegister)
+		sessions, err := getSessions(clientInfo, *registerSessionCount, *concurrentRegister, *keepaliveRegister)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -409,7 +409,7 @@ func main() {
 		if *logCallTime {
 			startTime = time.Now().UnixMilli()
 		}
-		sessions, err := getSessions(clientInfo, *callSessionCount, *concurrentCalls, *logCallTime, *keepaliveCall)
+		sessions, err := getSessions(clientInfo, *callSessionCount, *concurrentCalls, *keepaliveCall)
 		if err != nil {
 			log.Fatalln(err)
 		}

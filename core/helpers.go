@@ -120,7 +120,7 @@ func registerInvocationHandler(session *client.Client, procedure string, command
 	invocationHandler := func(ctx context.Context, inv *wamp.Invocation) client.InvokeResult {
 		output, err := argsKWArgs(inv.Arguments, inv.ArgumentsKw, nil)
 		if err != nil {
-			return client.InvokeResult{Err: "com.thing.error.invocation", Args: wamp.List{err}}
+			return client.InvokeResult{Err: "wamp.error.internal_error", Args: wamp.List{err}}
 		}
 		fmt.Println(output)
 
@@ -226,8 +226,11 @@ func buildStringFromMap(brokerFeatures map[string]interface{}) string {
 	return strings.TrimRight(builder.String(), ", ")
 }
 
-func getKeyPair(privateKeyKex string) (ed25519.PublicKey, ed25519.PrivateKey) {
-	privateKeyRaw, _ := hex.DecodeString(privateKeyKex)
+func getKeyPair(privateKeyKex string) (ed25519.PublicKey, ed25519.PrivateKey, error) {
+	privateKeyRaw, err := hex.DecodeString(privateKeyKex)
+	if err != nil {
+		return nil, nil, err
+	}
 	var privateKey ed25519.PrivateKey
 
 	if len(privateKeyRaw) == 32 {
@@ -235,12 +238,13 @@ func getKeyPair(privateKeyKex string) (ed25519.PublicKey, ed25519.PrivateKey) {
 	} else if len(privateKeyRaw) == 64 {
 		privateKey = ed25519.NewKeyFromSeed(privateKeyRaw[:32])
 	} else {
-		log.Fatal("Invalid private key. Cryptosign private key must be either 32 or 64 characters long")
+		return nil, nil,
+			fmt.Errorf("invalid private key: Cryptosign private key must be either 32 or 64 characters long")
 	}
 
 	publicKey := privateKey.Public().(ed25519.PublicKey)
 
-	return publicKey, privateKey
+	return publicKey, privateKey, nil
 }
 
 func sanitizeURL(url string) string {
@@ -253,7 +257,6 @@ func sanitizeURL(url string) string {
 }
 
 func getErrorFromErrorChannel(resC chan error) error {
-	close(resC)
 	var errs []string
 	for err := range resC {
 		if err != nil {

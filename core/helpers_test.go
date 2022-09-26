@@ -39,8 +39,8 @@ const (
 )
 
 func TestPrivateHexToKeyPair(t *testing.T) {
-	publicKey, privateKey := core.GetKeyPair(privateKeyHex)
-
+	publicKey, privateKey, err := core.GetKeyPair(privateKeyHex)
+	require.NoError(t, err)
 	assert.NotNil(t, publicKey, "public key is nil")
 	assert.NotNil(t, privateKey, "private key is nil")
 }

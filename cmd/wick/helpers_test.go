@@ -26,7 +26,9 @@ package main_test
 
 import (
 	"fmt"
-	"net"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gammazero/nexus/v3/router"
@@ -43,9 +45,7 @@ import (
 
 var (
 	testRealm      = "wick.test"
-	netAddr        = "localhost"
 	testClientInfo = &core.ClientInfo{
-		Url:        "ws://localhost:8080/ws",
 		Realm:      testRealm,
 		Serializer: serialize.JSON,
 		AuthMethod: "anonymous",
@@ -54,19 +54,16 @@ var (
 	testConcurrency = 100
 )
 
-func getFreePort() (port int, err error) {
-	var a *net.TCPAddr
-	if a, err = net.ResolveTCPAddr("tcp", "localhost:0"); err == nil {
-		var l *net.TCPListener
-		if l, err = net.ListenTCP("tcp", a); err == nil {
-			defer l.Close()
-			return l.Addr().(*net.TCPAddr).Port, nil
-		}
-	}
-	return
+func startTestServer(t *testing.T, wss *router.WebsocketServer) (wsURL string) {
+	mux := http.ServeMux{}
+	mux.HandleFunc("/ws", wss.ServeHTTP)
+	srv := httptest.NewServer(&mux)
+	t.Cleanup(srv.Close)
+	wsURL = strings.Replace(srv.URL, "http://", "ws://", 1) + "/ws"
+	return wsURL
 }
 
-func startWsServer(t *testing.T) {
+func startWsServer(t *testing.T) string {
 	realmConfig := &router.RealmConfig{
 		URI:              wamp.URI(testRealm),
 		StrictURI:        true,
@@ -79,32 +76,24 @@ func startWsServer(t *testing.T) {
 	}
 	rout, err := router.NewRouter(config, log.New())
 	require.NoError(t, err)
+	t.Cleanup(rout.Close)
 	// Create websocket server.
 	wss := router.NewWebsocketServer(rout)
-
-	port, err := getFreePort()
-	require.NoError(t, err)
-	wsAddr := fmt.Sprintf("%s:%d", netAddr, port)
-	wsCloser, err := wss.ListenAndServe(wsAddr)
-	require.NoError(t, err)
-	testClientInfo.Url = fmt.Sprintf("ws://%s:%v/ws", netAddr, port)
-	t.Cleanup(func() {
-		wsCloser.Close()
-		rout.Close()
-	})
+	return startTestServer(t, wss)
 }
 
 func TestSessions(t *testing.T) {
-	startWsServer(t)
+	wsURL := startWsServer(t)
+	testClientInfo.Url = wsURL
 	t.Run("TestConnect", func(t *testing.T) {
-		session, err := main.Connect(testClientInfo, false, 1)
+		session, err := main.Connect(testClientInfo, 1)
 		require.NoError(t, err)
 		require.Equal(t, true, session.Connected(), "get already closed session")
 		session.Close()
 	})
 
 	t.Run("TestGetSessions", func(t *testing.T) {
-		sessions, err := main.GetSessions(testClientInfo, sessionCount, testConcurrency, false, 0)
+		sessions, err := main.GetSessions(testClientInfo, sessionCount, testConcurrency, 0)
 		defer func() {
 			wp := workerpool.New(len(sessions))
 			for _, sess := range sessions {
