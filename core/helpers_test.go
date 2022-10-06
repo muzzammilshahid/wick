@@ -149,97 +149,31 @@ func TestUrlSanitization(t *testing.T) {
 }
 
 func TestListToWampList(t *testing.T) {
-	inputList := []string{"string", "1", "1.1", "true", `["group_1","group_2", 1, true]`,
-		`{"firstKey":"value", "secondKey":2}`,
-		`[{"firstKey":"value", "secondKey":2}, {"firstKey":"value", "secondKey":2}]`,
+	inputList := []string{"string", "1", "1.1", "true", `["group_1","group_2", 1.1, true]`,
+		`{"firstKey":"value", "secondKey":2.1}`,
+		`[{"firstKey":"value", "secondKey":2.1}, {"firstKey":"value", "secondKey":2.1}]`,
 		`"123"`, `'123'`, `"true"`}
 
+	expectedList := wamp.List{"string", 1, 1.1, true, []interface{}{"group_1", "group_2", 1.1, true},
+		map[string]interface{}{"firstKey": "value", "secondKey": 2.1},
+		[]map[string]interface{}{{"firstKey": "value", "secondKey": 2.1}, {"firstKey": "value", "secondKey": 2.1}},
+		"123", "123", "true"}
+
 	wampList := core.ListToWampList(inputList)
-
-	if len(wampList) != len(inputList) {
-		t.Error("error in list conversion")
-	}
-
-	if _, canConvert := wampList[1].(int); canConvert == false {
-		t.Error("error in list conversion")
-	}
-
-	if _, canConvert := wampList[2].(float64); canConvert == false {
-		t.Error("error in list conversion")
-	}
-
-	if _, canConvert := wampList[3].(bool); canConvert == false {
-		t.Error("error in list conversion")
-	}
-
-	if _, canConvert := wampList[4].([]interface{}); canConvert == false {
-		t.Error("error in list conversion")
-	}
-
-	if _, canConvert := wampList[5].(map[string]interface{}); canConvert == false {
-		t.Error("error in list conversion")
-	}
-
-	if _, canConvert := wampList[6].([]map[string]interface{}); canConvert == false {
-		t.Error("error in list conversion")
-	}
-
-	if wampList[7] != "123" {
-		t.Error("error in list conversion")
-	}
-
-	if wampList[8] != "123" {
-		t.Error("error in list conversion")
-	}
-
-	if wampList[9] != "true" {
-		t.Error("error in list conversion")
-	}
+	assert.Equal(t, expectedList, wampList, "error in list conversion")
 }
 
 func TestDictToWampDict(t *testing.T) {
 	inputDict := map[string]string{"string": "string", "int": "1", "float": "1.1", "bool": "true",
-		"list": `["group_1","group_2", 1, true]`, "json": `{"firstKey":"value", "secondKey":2}`,
-		"jsonList":     `[{"firstKey":"value", "secondKey":2}, {"firstKey":"value", "secondKey":2}]`,
+		"list": `["group_1","group_2", 1.1, true]`, "json": `{"firstKey":"value", "secondKey":2.2}`,
+		"jsonList":     `[{"firstKey":"value", "secondKey":2.2}, {"firstKey":"value", "secondKey":2.2}]`,
 		"stringNumber": `""123"`, "stringFloat": `'1.23'`, "stringBool": `"true"`}
+
+	expectedDict := wamp.Dict{"string": "string", "int": 1, "float": 1.1, "bool": true,
+		"list": []interface{}{"group_1", "group_2", 1.1, true}, "json": map[string]interface{}{"firstKey": "value", "secondKey": 2.2},
+		"jsonList":     []map[string]interface{}{{"firstKey": "value", "secondKey": 2.2}, {"firstKey": "value", "secondKey": 2.2}},
+		"stringNumber": `"123`, "stringFloat": "1.23", "stringBool": "true"}
+
 	wampDict := core.DictToWampDict(inputDict)
-	if len(inputDict) != len(wampDict) {
-		t.Error("error in map conversion")
-	}
-
-	if _, canConvert := wampDict["int"].(int); canConvert == false {
-		t.Error("error in map conversion")
-	}
-
-	if _, canConvert := wampDict["float"].(float64); canConvert == false {
-		t.Error("error in map conversion")
-	}
-
-	if _, canConvert := wampDict["bool"].(bool); canConvert == false {
-		t.Error("error in map conversion")
-	}
-
-	if _, canConvert := wampDict["list"].([]interface{}); canConvert == false {
-		t.Error("error in map conversion")
-	}
-
-	if _, canConvert := wampDict["json"].(map[string]interface{}); canConvert == false {
-		t.Error("error in map conversion")
-	}
-
-	if _, canConvert := wampDict["jsonList"].([]map[string]interface{}); canConvert == false {
-		t.Error("error in dict conversion")
-	}
-
-	if wampDict["stringNumber"] != `"123` {
-		t.Error("error in dict conversion")
-	}
-
-	if wampDict["stringFloat"] != "1.23" {
-		t.Error("error in dict conversion")
-	}
-
-	if wampDict["stringBool"] != "true" {
-		t.Error("error in dict conversion")
-	}
+	assert.Equal(t, expectedDict, wampDict, "error in dict conversion")
 }
