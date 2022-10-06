@@ -151,7 +151,8 @@ func TestUrlSanitization(t *testing.T) {
 func TestListToWampList(t *testing.T) {
 	inputList := []string{"string", "1", "1.1", "true", `["group_1","group_2", 1, true]`,
 		`{"firstKey":"value", "secondKey":2}`,
-		`[{"firstKey":"value", "secondKey":2}, {"firstKey":"value", "secondKey":2}]`}
+		`[{"firstKey":"value", "secondKey":2}, {"firstKey":"value", "secondKey":2}]`,
+		`"123"`, `'123'`, `"true"`}
 
 	wampList := core.ListToWampList(inputList)
 
@@ -182,12 +183,25 @@ func TestListToWampList(t *testing.T) {
 	if _, canConvert := wampList[6].([]map[string]interface{}); canConvert == false {
 		t.Error("error in list conversion")
 	}
+
+	if wampList[7] != "123" {
+		t.Error("error in list conversion")
+	}
+
+	if wampList[8] != "123" {
+		t.Error("error in list conversion")
+	}
+
+	if wampList[9] != "true" {
+		t.Error("error in list conversion")
+	}
 }
 
 func TestDictToWampDict(t *testing.T) {
 	inputDict := map[string]string{"string": "string", "int": "1", "float": "1.1", "bool": "true",
 		"list": `["group_1","group_2", 1, true]`, "json": `{"firstKey":"value", "secondKey":2}`,
-		"jsonList": `[{"firstKey":"value", "secondKey":2}, {"firstKey":"value", "secondKey":2}]`}
+		"jsonList":     `[{"firstKey":"value", "secondKey":2}, {"firstKey":"value", "secondKey":2}]`,
+		"stringNumber": `""123"`, "stringFloat": `'1.23'`, "stringBool": `"true"`}
 	wampDict := core.DictToWampDict(inputDict)
 	if len(inputDict) != len(wampDict) {
 		t.Error("error in map conversion")
@@ -214,6 +228,18 @@ func TestDictToWampDict(t *testing.T) {
 	}
 
 	if _, canConvert := wampDict["jsonList"].([]map[string]interface{}); canConvert == false {
+		t.Error("error in dict conversion")
+	}
+
+	if wampDict["stringNumber"] != `"123` {
+		t.Error("error in dict conversion")
+	}
+
+	if wampDict["stringFloat"] != "1.23" {
+		t.Error("error in dict conversion")
+	}
+
+	if wampDict["stringBool"] != "true" {
 		t.Error("error in dict conversion")
 	}
 }

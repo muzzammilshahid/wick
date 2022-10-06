@@ -62,12 +62,15 @@ func listToWampList(args []string) wamp.List {
 	}
 
 	for _, value := range args {
-
 		var mapJson map[string]interface{}
 		var mapList []map[string]interface{}
 		var simpleList []interface{}
 
-		if number, errNumber := strconv.Atoi(value); errNumber == nil {
+		if strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`) {
+			arguments = append(arguments, value[1:len(value)-1])
+		} else if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
+			arguments = append(arguments, value[1:len(value)-1])
+		} else if number, errNumber := strconv.Atoi(value); errNumber == nil {
 			arguments = append(arguments, number)
 		} else if float, errFloat := strconv.ParseFloat(value, 64); errFloat == nil {
 			arguments = append(arguments, float)
@@ -91,12 +94,15 @@ func dictToWampDict(kwargs map[string]string) wamp.Dict {
 	var keywordArguments wamp.Dict = make(map[string]interface{})
 
 	for key, value := range kwargs {
-
 		var mapJson map[string]interface{}
 		var mapList []map[string]interface{}
 		var simpleList []interface{}
 
-		if number, errNumber := strconv.Atoi(value); errNumber == nil {
+		if strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`) {
+			keywordArguments[key] = value[1 : len(value)-1]
+		} else if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
+			keywordArguments[key] = value[1 : len(value)-1]
+		} else if number, errNumber := strconv.Atoi(value); errNumber == nil {
 			keywordArguments[key] = number
 		} else if float, errFloat := strconv.ParseFloat(value, 64); errFloat == nil {
 			keywordArguments[key] = float
