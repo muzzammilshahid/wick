@@ -66,24 +66,27 @@ func listToWampList(args []string) wamp.List {
 		var mapList []map[string]interface{}
 		var simpleList []interface{}
 
-		if strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`) {
+		switch {
+		case strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`):
 			arguments = append(arguments, value[1:len(value)-1])
-		} else if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
+		case strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`):
 			arguments = append(arguments, value[1:len(value)-1])
-		} else if number, errNumber := strconv.Atoi(value); errNumber == nil {
-			arguments = append(arguments, number)
-		} else if float, errFloat := strconv.ParseFloat(value, 64); errFloat == nil {
-			arguments = append(arguments, float)
-		} else if boolean, errBoolean := strconv.ParseBool(value); errBoolean == nil {
-			arguments = append(arguments, boolean)
-		} else if errJson := json.Unmarshal([]byte(value), &mapJson); errJson == nil {
-			arguments = append(arguments, mapJson)
-		} else if errMapList := json.Unmarshal([]byte(value), &mapList); errMapList == nil {
-			arguments = append(arguments, mapList)
-		} else if errList := json.Unmarshal([]byte(value), &simpleList); errList == nil {
-			arguments = append(arguments, simpleList)
-		} else {
-			arguments = append(arguments, value)
+		default:
+			if number, errNumber := strconv.Atoi(value); errNumber == nil {
+				arguments = append(arguments, number)
+			} else if float, errFloat := strconv.ParseFloat(value, 64); errFloat == nil {
+				arguments = append(arguments, float)
+			} else if boolean, errBoolean := strconv.ParseBool(value); errBoolean == nil {
+				arguments = append(arguments, boolean)
+			} else if errJson := json.Unmarshal([]byte(value), &mapJson); errJson == nil {
+				arguments = append(arguments, mapJson)
+			} else if errMapList := json.Unmarshal([]byte(value), &mapList); errMapList == nil {
+				arguments = append(arguments, mapList)
+			} else if errList := json.Unmarshal([]byte(value), &simpleList); errList == nil {
+				arguments = append(arguments, simpleList)
+			} else {
+				arguments = append(arguments, value)
+			}
 		}
 	}
 
@@ -98,24 +101,27 @@ func dictToWampDict(kwargs map[string]string) wamp.Dict {
 		var mapList []map[string]interface{}
 		var simpleList []interface{}
 
-		if strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`) {
+		switch {
+		case strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`):
 			keywordArguments[key] = value[1 : len(value)-1]
-		} else if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
+		case strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`):
 			keywordArguments[key] = value[1 : len(value)-1]
-		} else if number, errNumber := strconv.Atoi(value); errNumber == nil {
-			keywordArguments[key] = number
-		} else if float, errFloat := strconv.ParseFloat(value, 64); errFloat == nil {
-			keywordArguments[key] = float
-		} else if boolean, errBoolean := strconv.ParseBool(value); errBoolean == nil {
-			keywordArguments[key] = boolean
-		} else if errJson := json.Unmarshal([]byte(value), &mapJson); errJson == nil {
-			keywordArguments[key] = mapJson
-		} else if errMapList := json.Unmarshal([]byte(value), &mapList); errMapList == nil {
-			keywordArguments[key] = mapList
-		} else if errList := json.Unmarshal([]byte(value), &simpleList); errList == nil {
-			keywordArguments[key] = simpleList
-		} else {
-			keywordArguments[key] = value
+		default:
+			if number, errNumber := strconv.Atoi(value); errNumber == nil {
+				keywordArguments[key] = number
+			} else if float, errFloat := strconv.ParseFloat(value, 64); errFloat == nil {
+				keywordArguments[key] = float
+			} else if boolean, errBoolean := strconv.ParseBool(value); errBoolean == nil {
+				keywordArguments[key] = boolean
+			} else if errJson := json.Unmarshal([]byte(value), &mapJson); errJson == nil {
+				keywordArguments[key] = mapJson
+			} else if errMapList := json.Unmarshal([]byte(value), &mapList); errMapList == nil {
+				keywordArguments[key] = mapList
+			} else if errList := json.Unmarshal([]byte(value), &simpleList); errList == nil {
+				keywordArguments[key] = simpleList
+			} else {
+				keywordArguments[key] = value
+			}
 		}
 	}
 	return keywordArguments

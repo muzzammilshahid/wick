@@ -149,30 +149,52 @@ func TestUrlSanitization(t *testing.T) {
 }
 
 func TestListToWampList(t *testing.T) {
-	inputList := []string{"string", "1", "1.1", "true", `["group_1","group_2", 1.1, true]`,
+	inputList := []string{
+		"string", "1", "1.1", "true",
+		`"123"`, `'123'`, `"true"`,
+		// JSON array, object, array of objects
+		`["group_1","group_2", 1.1, true]`,
 		`{"firstKey":"value", "secondKey":2.1}`,
 		`[{"firstKey":"value", "secondKey":2.1}, {"firstKey":"value", "secondKey":2.1}]`,
-		`"123"`, `'123'`, `"true"`}
+	}
 
-	expectedList := wamp.List{"string", 1, 1.1, true, []interface{}{"group_1", "group_2", 1.1, true},
+	expectedList := wamp.List{
+		"string", 1, 1.1, true,
+		"123", "123", "true",
+		// converted from JSON
+		[]interface{}{"group_1", "group_2", 1.1, true},
 		map[string]interface{}{"firstKey": "value", "secondKey": 2.1},
-		[]map[string]interface{}{{"firstKey": "value", "secondKey": 2.1}, {"firstKey": "value", "secondKey": 2.1}},
-		"123", "123", "true"}
+		[]map[string]interface{}{
+			{"firstKey": "value", "secondKey": 2.1},
+			{"firstKey": "value", "secondKey": 2.1},
+		},
+	}
 
 	wampList := core.ListToWampList(inputList)
 	assert.Equal(t, expectedList, wampList, "error in list conversion")
 }
 
 func TestDictToWampDict(t *testing.T) {
-	inputDict := map[string]string{"string": "string", "int": "1", "float": "1.1", "bool": "true",
-		"list": `["group_1","group_2", 1.1, true]`, "json": `{"firstKey":"value", "secondKey":2.2}`,
-		"jsonList":     `[{"firstKey":"value", "secondKey":2.2}, {"firstKey":"value", "secondKey":2.2}]`,
-		"stringNumber": `""123"`, "stringFloat": `'1.23'`, "stringBool": `"true"`}
+	inputDict := map[string]string{
+		"string": "string", "int": "1", "float": "1.1", "bool": "true",
+		"stringNumber": `""123"`, "stringFloat": `'1.23'`, "stringBool": `"true"`,
+		"list":     `["group_1","group_2", 1.1, true]`,
+		"json":     `{"firstKey":"value", "secondKey":2.2}`,
+		"jsonList": `[{"firstKey":"value", "secondKey":2.2}, {"firstKey":"value", "secondKey":2.2}]`,
+	}
 
-	expectedDict := wamp.Dict{"string": "string", "int": 1, "float": 1.1, "bool": true,
-		"list": []interface{}{"group_1", "group_2", 1.1, true}, "json": map[string]interface{}{"firstKey": "value", "secondKey": 2.2},
-		"jsonList":     []map[string]interface{}{{"firstKey": "value", "secondKey": 2.2}, {"firstKey": "value", "secondKey": 2.2}},
-		"stringNumber": `"123`, "stringFloat": "1.23", "stringBool": "true"}
+	expectedDict := wamp.Dict{
+		"string": "string", "int": 1, "float": 1.1, "bool": true,
+		"stringNumber": `"123`, "stringFloat": "1.23", "stringBool": "true",
+		"list": []interface{}{
+			"group_1", "group_2", 1.1, true,
+		},
+		"json": map[string]interface{}{"firstKey": "value", "secondKey": 2.2},
+		"jsonList": []map[string]interface{}{
+			{"firstKey": "value", "secondKey": 2.2},
+			{"firstKey": "value", "secondKey": 2.2},
+		},
+	}
 
 	wampDict := core.DictToWampDict(inputDict)
 	assert.Equal(t, expectedDict, wampDict, "error in dict conversion")
