@@ -77,7 +77,8 @@ func TestArgsKWArgs(t *testing.T) {
     "key2": 1,
     "key3": false
 }`},
-		{wamp.List{"test", 1, true, "1.0"}, wamp.Dict{"key": "value", "key2": 1, "key3": false}, wamp.Dict{"details": "wamp details"}, `details:{
+		{wamp.List{"test", 1, true, "1.0"}, wamp.Dict{"key": "value", "key2": 1, "key3": false},
+			wamp.Dict{"details": "wamp details"}, `details:{
     "details": "wamp details"
 }
 args:
@@ -114,7 +115,7 @@ func TestProgressArgsKWArgs(t *testing.T) {
 		{
 			wamp.List{"test", 1, true, "1.0"},
 			wamp.Dict{},
-			`args: ["test",1,true,"1.0"]  
+			`args: ["test",1,true,"1.0"]
 `},
 		{
 			wamp.List{},

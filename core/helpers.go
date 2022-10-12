@@ -54,6 +54,11 @@ type ClientInfo struct {
 	Secret     string
 }
 
+const (
+	sixtyFourInt = 64
+	thirtyTwoInt = 32
+)
+
 func listToWampList(args []string) wamp.List {
 	var arguments wamp.List
 
@@ -74,7 +79,7 @@ func listToWampList(args []string) wamp.List {
 		default:
 			if number, errNumber := strconv.Atoi(value); errNumber == nil {
 				arguments = append(arguments, number)
-			} else if float, errFloat := strconv.ParseFloat(value, 64); errFloat == nil {
+			} else if float, errFloat := strconv.ParseFloat(value, sixtyFourInt); errFloat == nil {
 				arguments = append(arguments, float)
 			} else if boolean, errBoolean := strconv.ParseBool(value); errBoolean == nil {
 				arguments = append(arguments, boolean)
@@ -109,7 +114,7 @@ func dictToWampDict(kwargs map[string]string) wamp.Dict {
 		default:
 			if number, errNumber := strconv.Atoi(value); errNumber == nil {
 				keywordArguments[key] = number
-			} else if float, errFloat := strconv.ParseFloat(value, 64); errFloat == nil {
+			} else if float, errFloat := strconv.ParseFloat(value, sixtyFourInt); errFloat == nil {
 				keywordArguments[key] = float
 			} else if boolean, errBoolean := strconv.ParseBool(value); errBoolean == nil {
 				keywordArguments[key] = boolean
@@ -148,10 +153,10 @@ func registerInvocationHandler(session *client.Client, procedure string, command
 		if hasMaxInvokeCount {
 			invokeCount--
 			if invokeCount == 0 {
-				session.Unregister(procedure)
+				_ = session.Unregister(procedure)
 				time.AfterFunc(1*time.Second, func() {
 					log.Println("session closing")
-					session.Close()
+					_ = session.Close()
 				})
 			}
 		}
@@ -230,14 +235,6 @@ func shellOut(command string) (string, string, error) {
 	return stdout.String(), stderr.String(), err
 }
 
-func buildStringFromMap(brokerFeatures map[string]interface{}) string {
-	var builder strings.Builder
-	for key, value := range brokerFeatures {
-		fmt.Fprintf(&builder, "%s=%v, ", key, value)
-	}
-	return strings.TrimRight(builder.String(), ", ")
-}
-
 func getKeyPair(privateKeyKex string) (ed25519.PublicKey, ed25519.PrivateKey, error) {
 	privateKeyRaw, err := hex.DecodeString(privateKeyKex)
 	if err != nil {
@@ -245,9 +242,9 @@ func getKeyPair(privateKeyKex string) (ed25519.PublicKey, ed25519.PrivateKey, er
 	}
 	var privateKey ed25519.PrivateKey
 
-	if len(privateKeyRaw) == 32 {
+	if len(privateKeyRaw) == thirtyTwoInt {
 		privateKey = ed25519.NewKeyFromSeed(privateKeyRaw)
-	} else if len(privateKeyRaw) == 64 {
+	} else if len(privateKeyRaw) == sixtyFourInt {
 		privateKey = ed25519.NewKeyFromSeed(privateKeyRaw[:32])
 	} else {
 		return nil, nil,
