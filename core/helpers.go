@@ -167,20 +167,20 @@ func registerInvocationHandler(session *client.Client, procedure string, command
 }
 
 func argsKWArgs(args wamp.List, kwArgs wamp.Dict, details wamp.Dict) (string, error) {
-	var outputString string
+	var builder strings.Builder
 	if details != nil {
 		jsonString, err := json.MarshalIndent(details, "", "    ")
 		if err != nil {
 			return "", err
 		}
-		outputString = fmt.Sprintf("details:%s\n", jsonString)
+		fmt.Fprintf(&builder, "details:%s\n", jsonString)
 	}
 	if len(args) != 0 {
 		jsonString, err := json.MarshalIndent(args, "", "    ")
 		if err != nil {
 			return "", err
 		}
-		outputString = fmt.Sprintf("%sargs:\n%s", outputString, jsonString)
+		fmt.Fprintf(&builder, "args:\n%s", jsonString)
 	}
 
 	if len(kwArgs) != 0 {
@@ -188,23 +188,23 @@ func argsKWArgs(args wamp.List, kwArgs wamp.Dict, details wamp.Dict) (string, er
 		if err != nil {
 			return "", err
 		}
-		outputString = fmt.Sprintf("%skwargs:\n%s", outputString, jsonString)
+		fmt.Fprintf(&builder, "kwargs:\n%s", jsonString)
 	}
 
 	if len(args) == 0 && len(kwArgs) == 0 && details == nil {
-		outputString = "args: []\nkwargs: {}"
+		fmt.Fprintf(&builder, "args: []\nkwargs: {}")
 	}
-	return outputString, nil
+	return builder.String(), nil
 }
 
 func progressArgsKWArgs(args wamp.List, kwArgs wamp.Dict) (string, error) {
-	var outputString string
+	var builder strings.Builder
 	if len(args) != 0 {
 		jsonString, err := json.Marshal(args)
 		if err != nil {
 			return "", err
 		}
-		outputString = fmt.Sprintf("args: %s  ", jsonString)
+		fmt.Fprintf(&builder, "args: %s", jsonString)
 	}
 
 	if len(kwArgs) != 0 {
@@ -212,16 +212,14 @@ func progressArgsKWArgs(args wamp.List, kwArgs wamp.Dict) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		outputString = fmt.Sprintf("%skwargs: %s", outputString, bs)
+		fmt.Fprintf(&builder, "kwargs: %s", bs)
 	}
 
 	if len(args) == 0 && len(kwArgs) == 0 {
-		outputString = "args: [] kwargs: {}"
+		fmt.Fprintf(&builder, "args: [] kwargs: {}")
 	}
 
-	outputString = fmt.Sprintf("%s\n", outputString)
-
-	return outputString, nil
+	return builder.String(), nil
 }
 
 func shellOut(command string) (string, string, error) {

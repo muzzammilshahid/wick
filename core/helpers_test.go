@@ -115,20 +115,16 @@ func TestProgressArgsKWArgs(t *testing.T) {
 		{
 			wamp.List{"test", 1, true, "1.0"},
 			wamp.Dict{},
-			`args: ["test",1,true,"1.0"]
-`},
+			`args: ["test",1,true,"1.0"]`},
 		{
 			wamp.List{},
 			wamp.Dict{"key": "value", "key2": 1, "key3": false},
-			`kwargs: {"key":"value","key2":1,"key3":false}
-`},
+			`kwargs: {"key":"value","key2":1,"key3":false}`},
 		{
 			wamp.List{"test", 1, true, "1.0"},
 			wamp.Dict{"key": "value", "key2": 1, "key3": false},
-			`args: ["test",1,true,"1.0"]  kwargs: {"key":"value","key2":1,"key3":false}
-`},
-		{wamp.List{}, wamp.Dict{}, `args: [] kwargs: {}
-`},
+			`args: ["test",1,true,"1.0"]kwargs: {"key":"value","key2":1,"key3":false}`},
+		{wamp.List{}, wamp.Dict{}, `args: [] kwargs: {}`},
 	} {
 		outputString, err := core.ProgressArgsKWArgs(data.args, data.kwargs)
 		require.NoError(t, err)
