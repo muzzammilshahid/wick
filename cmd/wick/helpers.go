@@ -92,6 +92,7 @@ func validateData(sessionCount int, concurrency int, keepAlive int) error {
 	return nil
 }
 
+// readFromProfile reads section from ini file.
 func readFromProfile(profile, filePath string) (*core.ClientInfo, error) {
 	clientInfo := &core.ClientInfo{}
 	cfg, err := ini.Load(filePath)
@@ -104,22 +105,16 @@ func readFromProfile(profile, filePath string) (*core.ClientInfo, error) {
 		return nil, fmt.Errorf("unable to read profile: %w", err)
 	}
 
-	// FIXME: validate url is not empty and no need to fill it with
-	//  a default
-	clientInfo.Url = section.Key("url").Validate(func(s string) string {
-		if len(s) == 0 {
-			return "ws://localhost:8080/ws"
-		}
-		return s
-	})
+	clientInfo.Url = section.Key("url").String()
+	if err = validateURL(clientInfo.Url); err != nil {
+		return nil, err
+	}
 
-	// FIXME: validate realm is non empty and is a URI (no space at least)
-	clientInfo.Realm = section.Key("realm").Validate(func(s string) string {
-		if len(s) == 0 {
-			return "realm1"
-		}
-		return s
-	})
+	clientInfo.Realm = section.Key("realm").String()
+	if err = validateRealm(clientInfo.Realm); err != nil {
+		return nil, err
+	}
+
 	serializer := section.Key("serializer").String()
 	switch serializer {
 	case jsonSerializer, msgpackSerializer, cborSerializer:
@@ -134,17 +129,26 @@ func readFromProfile(profile, filePath string) (*core.ClientInfo, error) {
 	// FIXME: validate not empty
 	clientInfo.Authid = section.Key("authid").String()
 	clientInfo.Authrole = section.Key("authrole").String()
-	// FIXME: validate authmethod is not of invalid type
+
 	clientInfo.AuthMethod = section.Key("authmethod").String()
+	if err = validateAuthMethod(clientInfo.AuthMethod); err != nil {
+		return nil, err
+	}
 	if clientInfo.AuthMethod == cryptosignAuth {
-		// Validate private key not empty and is valid length
 		clientInfo.PrivateKey = section.Key("private-key").String()
+		if err = validatePrivateKey(clientInfo.PrivateKey); err != nil {
+			return nil, err
+		}
 	} else if clientInfo.AuthMethod == ticketAuth {
-		// validate ticket not empty
 		clientInfo.Ticket = section.Key("ticket").String()
+		if clientInfo.Ticket == "" {
+			return nil, fmt.Errorf("ticket is required for ticket authentication")
+		}
 	} else if clientInfo.AuthMethod == wampCraAuth {
-		// validate not empty
 		clientInfo.Secret = section.Key("secret").String()
+		if clientInfo.Secret == "" {
+			return nil, fmt.Errorf("secret is required for wampcra authentication")
+		}
 	}
 
 	return clientInfo, nil
@@ -152,6 +156,9 @@ func readFromProfile(profile, filePath string) (*core.ClientInfo, error) {
 
 // validateURL returns error if given string is not valid url.
 func validateURL(s string) error {
+	if s == "" {
+		return fmt.Errorf("invalid url : url must not be empty")
+	}
 	parse, err := url.ParseRequestURI(s)
 	if err != nil {
 		return err

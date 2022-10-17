@@ -183,6 +183,7 @@ func TestValidateSerializer(t *testing.T) {
 		"Json",
 		"foo",
 		"serializer",
+		"",
 	} {
 		err := main.ValidateSerializer(invalidSerializer)
 		assert.Error(t, err, fmt.Sprintf("%s is an invalid serializer must return error.", invalidSerializer))
