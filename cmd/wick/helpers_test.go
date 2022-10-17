@@ -25,7 +25,11 @@
 package main_test
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -141,4 +145,128 @@ func TestSelectAuthMethod(t *testing.T) {
 		method := main.SelectAuthMethod(data.privateKey, data.ticket, data.secret)
 		assert.Equal(t, data.expectedMethod, method, "problem in choosing auth method")
 	}
+}
+
+func TestValidateUrl(t *testing.T) {
+	for _, invalidUrl := range []string{
+		"foo",
+		"localhost",
+		"ws//localhost",
+		"ws//:localhost",
+	} {
+		err := main.ValidateURL(invalidUrl)
+		assert.Error(t, err, fmt.Sprintf("%s is an invalid url must return error.", invalidUrl))
+	}
+
+	for _, validUrl := range []string{
+		"ws://localhost:8080/",
+		"ws://localhost:8080/ws",
+		"rs://localhost:8080/",
+		"tcp://localhost:8080/",
+	} {
+		err := main.ValidateURL(validUrl)
+		assert.NoError(t, err)
+	}
+}
+
+func TestValidateSerializer(t *testing.T) {
+	for _, validSerializer := range []string{
+		main.Json,
+		main.Cbor,
+		main.MsgPack,
+	} {
+		err := main.ValidateSerializer(validSerializer)
+		assert.NoError(t, err)
+	}
+
+	for _, invalidSerializer := range []string{
+		"Json",
+		"foo",
+		"serializer",
+	} {
+		err := main.ValidateSerializer(invalidSerializer)
+		assert.Error(t, err, fmt.Sprintf("%s is an invalid serializer must return error.", invalidSerializer))
+	}
+}
+
+func TestValidateAuthMethod(t *testing.T) {
+	for _, validAuthMethod := range []string{
+		main.AnonymousAuth,
+		main.TicketAuth,
+		main.WampCraAuth,
+		main.CryptosignAuth,
+	} {
+		err := main.ValidateAuthMethod(validAuthMethod)
+		assert.NoError(t, err)
+	}
+
+	for _, invalidAuthMethod := range []string{
+		"foo",
+		"crypto",
+		"WampCra",
+	} {
+		err := main.ValidateSerializer(invalidAuthMethod)
+		assert.Error(t, err, fmt.Sprintf("%s is an invalid authmethod must return error.", invalidAuthMethod))
+	}
+}
+
+func TestValidateRealm(t *testing.T) {
+	err := main.ValidateRealm("test realm")
+	assert.Error(t, err)
+
+	err = main.ValidateRealm("com.test.realm")
+	assert.NoError(t, err)
+}
+
+func TestValidatePrivateKey(t *testing.T) {
+	for _, validPrivateKey := range []string{
+		"a728764c7c53fd631c9266c92099bf62d3f72f56514bb7ed4bffdbea79a8d7d6",
+		"3fd631c9266c92099bf62d3f72f56514",
+	} {
+		err := main.ValidatePrivateKey(validPrivateKey)
+		assert.NoError(t, err)
+	}
+
+	for _, invalidPrivateKey := range []string{
+		"foo",
+		"test key",
+		"3fd631c9266c92099bf62d3f72f565143fd631c9266c92099bf62d3f72f565143fd631c9266c92099bf62d3f72f56514",
+	} {
+		err := main.ValidatePrivateKey(invalidPrivateKey)
+		assert.Error(t, err, fmt.Sprintf("%s is an invalid privatekey must return error.", invalidPrivateKey))
+	}
+}
+
+func TestAskForInput(t *testing.T) {
+	for _, data := range []struct {
+		query        string
+		defaultVal   string
+		required     bool
+		loop         bool
+		validateFunc func(string) error
+
+		userInput      io.Reader
+		expectedOutput string
+	}{
+		{"", "", true, false, nil,
+			bytes.NewBufferString("hello test"), "hello test"},
+		// test default
+		{"", "foo", false, false, nil,
+			bytes.NewBufferString(""), "foo"},
+	} {
+		actualOutput, err := main.AskForInput(data.userInput, ioutil.Discard, data.query, data.defaultVal, data.required,
+			data.loop, data.validateFunc)
+		assert.NoError(t, err)
+		assert.Equal(t, data.expectedOutput, actualOutput)
+	}
+}
+
+func TestRead(t *testing.T) {
+	var userInput = bytes.NewBufferString("test input")
+	var bReader = bufio.NewReader(userInput)
+	var expectedOutput = "test input"
+
+	output, err := main.Read(bReader)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedOutput, output)
 }

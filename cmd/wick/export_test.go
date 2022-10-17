@@ -29,4 +29,20 @@ var (
 	GetSessions         = getSessions
 	GetSerializerByName = getSerializerByName
 	SelectAuthMethod    = selectAuthMethod
+	ValidateURL         = validateURL
+	ValidateSerializer  = validateSerializer
+	ValidateAuthMethod  = validateAuthMethod
+	ValidateRealm       = validateRealm
+	ValidatePrivateKey  = validatePrivateKey
+	AskForInput         = askForInput
+	Read                = read
+
+	Json    = jsonSerializer
+	Cbor    = cborSerializer
+	MsgPack = msgpackSerializer
+
+	CryptosignAuth = cryptosignAuth
+	TicketAuth     = ticketAuth
+	WampCraAuth    = wampCraAuth
+	AnonymousAuth  = anonymousAuth
 )
