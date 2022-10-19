@@ -30,7 +30,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -413,31 +412,16 @@ func askForInput(reader io.Reader, writer io.Writer, query string, defaultVal st
 
 // read reads input from reader.
 func read(bReader *bufio.Reader) (string, error) {
-	// sigCh is channel which is watch Interrupted signal (SIGINT)
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, os.Interrupt)
-	defer signal.Stop(sigCh)
-
 	var resultStr string
 	var resultErr error
-	doneCh := make(chan struct{})
 
-	go func() {
-		defer close(doneCh)
-		line, err := bReader.ReadString('\n')
-		if err != nil && err != io.EOF {
-			resultErr = fmt.Errorf("failed to read the input: %w", err)
-		}
-
-		resultStr = strings.TrimSuffix(line, "\n")
-	}()
-
-	select {
-	case <-sigCh:
-		return "", fmt.Errorf("interrupted")
-	case <-doneCh:
-		return resultStr, resultErr
+	line, err := bReader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		resultErr = fmt.Errorf("failed to read the input: %w", err)
 	}
+
+	resultStr = strings.TrimSuffix(line, "\n")
+	return resultStr, resultErr
 }
 
 func getErrorFromErrorChannel(resC chan error) error {
