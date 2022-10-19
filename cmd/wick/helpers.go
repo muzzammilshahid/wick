@@ -265,7 +265,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 
 	if clientInfo.Authid == "" {
 		inputAuthid, err := askForInput(reader, writer, &inputOptions{
-			Query:        "Enter authid",
+			Query:        "Enter authid to use, if authenticating",
 			DefaultVal:   "",
 			Required:     false,
 			Loop:         false,
