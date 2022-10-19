@@ -53,6 +53,8 @@ const (
 	jsonSerializer    = "json"
 	cborSerializer    = "cbor"
 	msgpackSerializer = "msgpack"
+
+	readExecutePermission = 0755
 )
 
 func getSerializerByName(name string) serialize.Serialization {
@@ -383,7 +385,7 @@ func writeProfile(sectionName, serializerStr, filePath string, clientInfo *core.
 		}
 	}
 
-	if err = os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+	if err = os.MkdirAll(filepath.Dir(filePath), readExecutePermission); err != nil {
 		return fmt.Errorf("cannot create directory: %w", err)
 	}
 	return cfg.SaveTo(filePath)
