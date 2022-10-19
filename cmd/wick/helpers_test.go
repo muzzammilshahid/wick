@@ -212,11 +212,23 @@ func TestValidateAuthMethod(t *testing.T) {
 }
 
 func TestValidateRealm(t *testing.T) {
-	err := main.ValidateRealm("test realm")
-	assert.Error(t, err)
+	for _, inValidRealm := range []string{
+		"test realm",
+		"test&",
+		"",
+	} {
+		err := main.ValidateRealm(inValidRealm)
+		assert.Error(t, err)
+	}
 
-	err = main.ValidateRealm("com.test.realm")
-	assert.NoError(t, err)
+	for _, validRealm := range []string{
+		"com.test.realm",
+		"com.test.realm_1",
+	} {
+		err := main.ValidateRealm(validRealm)
+		assert.NoError(t, err)
+	}
+
 }
 
 func TestValidatePrivateKey(t *testing.T) {

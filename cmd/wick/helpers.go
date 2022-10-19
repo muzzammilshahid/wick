@@ -32,6 +32,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -194,8 +195,9 @@ func validateAuthMethod(s string) error {
 
 // validateRealm returns error if given string is empty or not a valid realm.
 func validateRealm(s string) error {
-	if s == "" || strings.Contains(s, " ") {
-		return fmt.Errorf("invalid realm: is unset or contains whitespace")
+	var realmPattern = regexp.MustCompile(`^([0-9a-z_]+\.)*([0-9a-z_]+)$`)
+	if !realmPattern.MatchString(s) {
+		return fmt.Errorf("invalid realm: is unset or not a valid uri")
 	}
 	return nil
 }
