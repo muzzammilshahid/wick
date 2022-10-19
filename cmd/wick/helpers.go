@@ -298,33 +298,16 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 	return clientInfo, serializerStr, nil
 }
 
-// ensureFile create file and all directories in given path if not already exists.
-func ensureFile(filePath string) error {
-	_, err := os.Stat(filePath)
-	if os.IsNotExist(err) {
-		if err = os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
-			return err
-		}
-		file, err := os.Create(filePath)
-		if err != nil {
-			return err
-		}
-		file.Close()
-	}
-	return err
-}
-
 // writeProfile write section in ini file.
 func writeProfile(sectionName, serializerStr, filePath string, clientInfo *core.ClientInfo) error {
-	err := ensureFile(filePath)
-	if err != nil {
-		return err
-	}
-
 	// load from ini file
 	cfg, err := ini.Load(filePath)
 	if err != nil {
-		return fmt.Errorf("fail to load config: %w", err)
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("fail to load config: %w", err)
+		}
+		// no config, use an empty one
+		cfg = ini.Empty()
 	}
 
 	// create a new section
@@ -351,6 +334,10 @@ func writeProfile(sectionName, serializerStr, filePath string, clientInfo *core.
 		if _, err = section.NewKey(data.key, data.value); err != nil {
 			return fmt.Errorf("error in creating key: %w", err)
 		}
+	}
+
+	if err = os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		return fmt.Errorf("cannot create directory: %w", err)
 	}
 	return cfg.SaveTo(filePath)
 }
