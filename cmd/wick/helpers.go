@@ -157,7 +157,7 @@ func readFromProfile(profile, filePath string) (*core.ClientInfo, error) {
 // validateURL returns error if given string is not valid url.
 func validateURL(s string) error {
 	if s == "" {
-		return fmt.Errorf("invalid url : url must not be empty")
+		return fmt.Errorf("invalid url: url must not be empty")
 	}
 	parse, err := url.ParseRequestURI(s)
 	if err != nil {
@@ -254,7 +254,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 	}
 
 	if clientInfo.Authrole == "" {
-		inputAuthrole, err := askForInput(reader, writer, "Enter authrole", "", false,
+		inputAuthrole, err := askForInput(reader, writer, "Enter authentication role", "", false,
 			false, nil)
 		if err != nil {
 			return nil, serializerStr, err
@@ -263,7 +263,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 	}
 
 	if clientInfo.AuthMethod == "" || clientInfo.AuthMethod == "anonymous" {
-		inputAuthMethod, err := askForInput(reader, writer, "Enter authmethod", "anonymous", true,
+		inputAuthMethod, err := askForInput(reader, writer, "Enter authentication method", "anonymous", true,
 			true, validateAuthMethod)
 		clientInfo.AuthMethod = inputAuthMethod
 		if err != nil {
