@@ -46,3 +46,5 @@ var (
 	WampCraAuth    = wampCraAuth
 	AnonymousAuth  = anonymousAuth
 )
+
+type InputOption = inputOptions

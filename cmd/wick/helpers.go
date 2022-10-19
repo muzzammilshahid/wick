@@ -217,8 +217,13 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 	var writer = os.Stdout
 	var reader = os.Stdin
 	if clientInfo.Url == "" || clientInfo.Url == "ws://localhost:8080/ws" {
-		inputUrl, err := askForInput(reader, writer, "Enter url", "ws://localhost:8080/ws",
-			true, true, validateURL)
+		inputUrl, err := askForInput(reader, writer, &inputOptions{
+			Query:        "Enter url",
+			DefaultVal:   "ws://localhost:8080/ws",
+			Required:     true,
+			Loop:         true,
+			ValidateFunc: validateURL,
+		})
 		if err != nil {
 			return nil, "", err
 		}
@@ -226,8 +231,13 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 	}
 
 	if clientInfo.Realm == "" || clientInfo.Realm == "realm1" {
-		inputRealm, err := askForInput(reader, writer, "Enter realm", "realm1", true,
-			true, validateRealm)
+		inputRealm, err := askForInput(reader, writer, &inputOptions{
+			Query:        "Enter realm",
+			DefaultVal:   "realm1",
+			Required:     true,
+			Loop:         true,
+			ValidateFunc: validateRealm,
+		})
 		if err != nil {
 			return nil, "", err
 		}
@@ -236,8 +246,13 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 
 	var serializerStr string
 	if serializer == "json" {
-		inputSerializer, err := askForInput(reader, writer, "Enter serializer", "json", true,
-			true, validateSerializer)
+		inputSerializer, err := askForInput(reader, writer, &inputOptions{
+			Query:        "Enter serializer",
+			DefaultVal:   "json",
+			Required:     true,
+			Loop:         true,
+			ValidateFunc: validateSerializer,
+		})
 		if err != nil {
 			return nil, serializerStr, err
 		}
@@ -245,8 +260,13 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 	}
 
 	if clientInfo.Authid == "" {
-		inputAuthid, err := askForInput(reader, writer, "Enter authid", "", false,
-			false, nil)
+		inputAuthid, err := askForInput(reader, writer, &inputOptions{
+			Query:        "Enter authid",
+			DefaultVal:   "",
+			Required:     false,
+			Loop:         false,
+			ValidateFunc: nil,
+		})
 		if err != nil {
 			return nil, serializerStr, err
 		}
@@ -254,8 +274,13 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 	}
 
 	if clientInfo.Authrole == "" {
-		inputAuthrole, err := askForInput(reader, writer, "Enter authentication role", "", false,
-			false, nil)
+		inputAuthrole, err := askForInput(reader, writer, &inputOptions{
+			Query:        "Enter authentication role",
+			DefaultVal:   "",
+			Required:     false,
+			Loop:         false,
+			ValidateFunc: nil,
+		})
 		if err != nil {
 			return nil, serializerStr, err
 		}
@@ -263,8 +288,13 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 	}
 
 	if clientInfo.AuthMethod == "" || clientInfo.AuthMethod == "anonymous" {
-		inputAuthMethod, err := askForInput(reader, writer, "Enter authentication method", "anonymous", true,
-			true, validateAuthMethod)
+		inputAuthMethod, err := askForInput(reader, writer, &inputOptions{
+			Query:        "Enter authentication method",
+			DefaultVal:   "anonymous",
+			Required:     true,
+			Loop:         true,
+			ValidateFunc: validateAuthMethod,
+		})
 		clientInfo.AuthMethod = inputAuthMethod
 		if err != nil {
 			return nil, serializerStr, err
@@ -273,22 +303,37 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 
 	switch clientInfo.AuthMethod {
 	case ticketAuth:
-		inputTicket, err := askForInput(reader, writer, "Enter ticket", "", true,
-			true, nil)
+		inputTicket, err := askForInput(reader, writer, &inputOptions{
+			Query:        "Enter ticket",
+			DefaultVal:   "",
+			Required:     true,
+			Loop:         true,
+			ValidateFunc: nil,
+		})
 		if err != nil {
 			return nil, serializerStr, err
 		}
 		clientInfo.Ticket = inputTicket
 	case wampCraAuth:
-		inputSecret, err := askForInput(reader, writer, "Enter secret", "", true,
-			true, nil)
+		inputSecret, err := askForInput(reader, writer, &inputOptions{
+			Query:        "Enter secret",
+			DefaultVal:   "",
+			Required:     true,
+			Loop:         true,
+			ValidateFunc: nil,
+		})
 		if err != nil {
 			return nil, serializerStr, err
 		}
 		clientInfo.Secret = inputSecret
 	case cryptosignAuth:
-		inputPrivateKey, err := askForInput(reader, writer, "Enter private key", "", true,
-			true, validatePrivateKey)
+		inputPrivateKey, err := askForInput(reader, writer, &inputOptions{
+			Query:        "Enter private key",
+			DefaultVal:   "",
+			Required:     true,
+			Loop:         true,
+			ValidateFunc: validatePrivateKey,
+		})
 		if err != nil {
 			return nil, serializerStr, err
 		}
@@ -342,21 +387,28 @@ func writeProfile(sectionName, serializerStr, filePath string, clientInfo *core.
 	return cfg.SaveTo(filePath)
 }
 
-// askForInput asks the user for input for the given query.
-// If loop is true, it continues to ask until it receives valid input.
-func askForInput(reader io.Reader, writer io.Writer, query string, defaultVal string, required bool, loop bool,
-	validateFunc func(string) error) (string, error) {
+type inputOptions struct {
+	Query        string
+	DefaultVal   string
+	Required     bool
+	Loop         bool
+	ValidateFunc func(string) error
+}
+
+// askForInput asks the user for input for the given Query.
+// If Loop is true, it continues to ask until it receives valid input.
+func askForInput(reader io.Reader, writer io.Writer, options *inputOptions) (string, error) {
 	// resultStr and resultErr are return val of this function
 	var resultStr string
 	var resultErr error
 
 	for {
 		// Display the query to the user.
-		fmt.Fprintf(writer, "%s: ", query)
+		fmt.Fprintf(writer, "%s: ", options.Query)
 
 		// Display default value if not empty.
-		if defaultVal != "" {
-			fmt.Fprintf(writer, "(Default is %s): ", defaultVal)
+		if options.DefaultVal != "" {
+			fmt.Fprintf(writer, "(Default is %s): ", options.DefaultVal)
 		}
 
 		// Read user input from UI.Reader.
@@ -367,13 +419,13 @@ func askForInput(reader io.Reader, writer io.Writer, query string, defaultVal st
 		}
 
 		// line is empty but default is provided returns it
-		if line == "" && defaultVal != "" {
-			resultStr = defaultVal
+		if line == "" && options.DefaultVal != "" {
+			resultStr = options.DefaultVal
 			break
 		}
 
-		if line == "" && required {
-			if !loop {
+		if line == "" && options.Required {
+			if !options.Loop {
 				resultErr = fmt.Errorf("default value is not provided but input is empty")
 				break
 			}
@@ -383,9 +435,9 @@ func askForInput(reader io.Reader, writer io.Writer, query string, defaultVal st
 		}
 
 		// validate input by custom function
-		if validateFunc != nil {
-			if err = validateFunc(line); err != nil {
-				if !loop {
+		if options.ValidateFunc != nil {
+			if err = options.ValidateFunc(line); err != nil {
+				if !options.Loop {
 					resultErr = err
 					break
 				}

@@ -240,23 +240,18 @@ func TestValidatePrivateKey(t *testing.T) {
 
 func TestAskForInput(t *testing.T) {
 	for _, data := range []struct {
-		query        string
-		defaultVal   string
-		required     bool
-		loop         bool
-		validateFunc func(string) error
+		options *main.InputOption
 
 		userInput      io.Reader
 		expectedOutput string
 	}{
-		{"", "", true, false, nil,
+		{&main.InputOption{Query: "", DefaultVal: "", Required: true, Loop: false, ValidateFunc: nil},
 			bytes.NewBufferString("hello test"), "hello test"},
 		// test default
-		{"", "foo", false, false, nil,
+		{&main.InputOption{Query: "", DefaultVal: "foo", Required: false, Loop: false, ValidateFunc: nil},
 			bytes.NewBufferString(""), "foo"},
 	} {
-		actualOutput, err := main.AskForInput(data.userInput, ioutil.Discard, data.query, data.defaultVal, data.required,
-			data.loop, data.validateFunc)
+		actualOutput, err := main.AskForInput(data.userInput, ioutil.Discard, data.options)
 		assert.NoError(t, err)
 		assert.Equal(t, data.expectedOutput, actualOutput)
 	}
