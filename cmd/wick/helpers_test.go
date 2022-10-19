@@ -222,7 +222,7 @@ func TestValidateRealm(t *testing.T) {
 func TestValidatePrivateKey(t *testing.T) {
 	for _, validPrivateKey := range []string{
 		"a728764c7c53fd631c9266c92099bf62d3f72f56514bb7ed4bffdbea79a8d7d6",
-		"3fd631c9266c92099bf62d3f72f56514",
+		"e511d66398d742a3e1e962edb202702a924e0d9c33dfbf0d92e9b14bafad1663",
 	} {
 		err := main.ValidatePrivateKey(validPrivateKey)
 		assert.NoError(t, err)

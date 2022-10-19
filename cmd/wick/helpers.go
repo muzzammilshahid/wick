@@ -26,6 +26,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/url"
@@ -201,7 +202,11 @@ func validateRealm(s string) error {
 
 // validatePrivateKey return error if given string is not a valid private key.
 func validatePrivateKey(s string) error {
-	if len(s) != 64 && len(s) != 32 {
+	privateKeyRaw, err := hex.DecodeString(s)
+	if err != nil {
+		return fmt.Errorf("invalid private key: %w", err)
+	}
+	if len(privateKeyRaw) != 64 && len(privateKeyRaw) != 32 {
 		return fmt.Errorf("invalid private key: private key must have length of 32 or 64")
 	}
 	return nil
