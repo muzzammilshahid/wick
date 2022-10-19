@@ -176,7 +176,7 @@ func validateSerializer(s string) error {
 	case jsonSerializer, msgpackSerializer, cborSerializer:
 		return nil
 	default:
-		return fmt.Errorf("invalid serializer: serailizer must be json, msgpack or cbor")
+		return fmt.Errorf("invalid serializer: serailizer must be 'json', 'msgpack' or 'cbor'")
 	}
 }
 
@@ -194,7 +194,7 @@ func validateAuthMethod(s string) error {
 // validateRealm returns error if given string is empty or not a valid realm.
 func validateRealm(s string) error {
 	if s == "" || strings.Contains(s, " ") {
-		return fmt.Errorf("invalid realm: realm must contain no space")
+		return fmt.Errorf("invalid realm: is unset or contains whitespace")
 	}
 	return nil
 }
