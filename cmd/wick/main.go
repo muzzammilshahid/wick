@@ -581,7 +581,17 @@ func main() {
 
 	case c.configure.FullCommand():
 		if *c.profile == "" {
-			*c.profile = "profile1"
+			profile, err := askForInput(os.Stdin, os.Stdout, &inputOptions{
+				Query:        "Enter profile name",
+				DefaultVal:   "profile1",
+				Required:     true,
+				Loop:         true,
+				ValidateFunc: nil,
+			})
+			if err != nil {
+				log.Fatalln(err)
+			}
+			*c.profile = profile
 		}
 		clientInfo, *c.serializer, err = getInputFromUser(*c.serializer, clientInfo)
 		if err != nil {
