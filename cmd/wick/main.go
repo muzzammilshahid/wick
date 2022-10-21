@@ -581,7 +581,7 @@ func main() {
 
 	case c.configure.FullCommand():
 		if *c.profile == "" {
-			log.Fatalln("Must provide section name using --profile.")
+			*c.profile = "DEFAULT"
 		}
 		clientInfo, *c.serializer, err = getInputFromUser(*c.serializer, clientInfo)
 		if err != nil {
