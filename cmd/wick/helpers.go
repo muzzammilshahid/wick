@@ -346,7 +346,7 @@ func writeProfile(sectionName, serializerStr, filePath string, clientInfo *core.
 	}
 
 	// create a new section
-	section, err := cfg.NewSection(sectionName)
+	section, err := cfg.NewSection(fmt.Sprintf("profile %s", sectionName))
 	if err != nil {
 		return fmt.Errorf("fail to create config: %w", err)
 	}
