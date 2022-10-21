@@ -410,7 +410,7 @@ func askForInput(reader io.Reader, writer io.Writer, options *inputOptions) (str
 			break
 		}
 
-		// line is empty but default is provided returns it
+		// line is empty but a default is provided, so use it
 		if line == "" && options.DefaultVal != "" {
 			resultStr = options.DefaultVal
 			break
@@ -418,7 +418,7 @@ func askForInput(reader io.Reader, writer io.Writer, options *inputOptions) (str
 
 		if line == "" && options.Required {
 			if !options.Loop {
-				resultErr = fmt.Errorf("default value is not provided but input is empty")
+				resultErr = fmt.Errorf("no input and no default value")
 				break
 			}
 
@@ -434,7 +434,7 @@ func askForInput(reader io.Reader, writer io.Writer, options *inputOptions) (str
 					break
 				}
 
-				fmt.Fprintf(writer, "Failed to validate input string: %s\n", err)
+				fmt.Fprintf(writer, "Invalid input: %v\n", err)
 				continue
 			}
 		}
