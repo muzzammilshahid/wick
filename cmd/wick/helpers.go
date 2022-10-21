@@ -251,7 +251,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 	var serializerStr string
 	if serializer == "json" {
 		inputSerializer, err := askForInput(reader, writer, &inputOptions{
-			Query:        "Enter serializer",
+			Query:        "Enter serializer(supported are 'json', 'msgpack', 'cbor')",
 			DefaultVal:   "json",
 			Required:     true,
 			Loop:         true,
@@ -265,7 +265,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 
 	if clientInfo.Authid == "" {
 		inputAuthid, err := askForInput(reader, writer, &inputOptions{
-			Query:        "Enter authid to use, if authenticating",
+			Query:        "Enter authid",
 			DefaultVal:   "",
 			Required:     false,
 			Loop:         false,
@@ -277,23 +277,9 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 		clientInfo.Authid = inputAuthid
 	}
 
-	if clientInfo.Authrole == "" {
-		inputAuthrole, err := askForInput(reader, writer, &inputOptions{
-			Query:        "Enter authentication role",
-			DefaultVal:   "",
-			Required:     false,
-			Loop:         false,
-			ValidateFunc: nil,
-		})
-		if err != nil {
-			return nil, serializerStr, err
-		}
-		clientInfo.Authrole = inputAuthrole
-	}
-
 	if clientInfo.AuthMethod == "" || clientInfo.AuthMethod == "anonymous" {
 		inputAuthMethod, err := askForInput(reader, writer, &inputOptions{
-			Query:        "Enter authentication method",
+			Query:        "Enter authmethod(supported are 'anonymous', 'ticket', 'wampcra', 'cryptosign')",
 			DefaultVal:   "anonymous",
 			Required:     true,
 			Loop:         true,
@@ -332,7 +318,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 		clientInfo.Secret = inputSecret
 	case cryptosignAuth:
 		inputPrivateKey, err := askForInput(reader, writer, &inputOptions{
-			Query:        "Enter private key",
+			Query:        "Enter private-key",
 			DefaultVal:   "",
 			Required:     true,
 			Loop:         true,
