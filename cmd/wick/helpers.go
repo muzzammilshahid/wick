@@ -167,7 +167,7 @@ func validateURL(s string) error {
 		return err
 	}
 	switch parse.Scheme {
-	case "ws", "rs", "tcp":
+	case "ws", "rs", "tcp", "wss", "rss", "tcps":
 		return nil
 	default:
 		return fmt.Errorf("invalid url: scheme must be 'ws', 'rs' or 'tcp'")

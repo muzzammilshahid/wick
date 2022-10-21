@@ -163,6 +163,9 @@ func TestValidateUrl(t *testing.T) {
 		"ws://localhost:8080/ws",
 		"rs://localhost:8080/",
 		"tcp://localhost:8080/",
+		"wss://localhost:8080/",
+		"rss://localhost:8080/",
+		"wss://localhost:8080/wss",
 	} {
 		err := main.ValidateURL(validUrl)
 		assert.NoError(t, err)

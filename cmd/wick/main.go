@@ -581,7 +581,7 @@ func main() {
 
 	case c.configure.FullCommand():
 		if *c.profile == "" {
-			*c.profile = "DEFAULT"
+			*c.profile = "default"
 		}
 		clientInfo, *c.serializer, err = getInputFromUser(*c.serializer, clientInfo)
 		if err != nil {
