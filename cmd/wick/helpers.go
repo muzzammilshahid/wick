@@ -103,7 +103,7 @@ func readFromProfile(profile, filePath string) (*core.ClientInfo, error) {
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 
-	section, err := cfg.GetSection(profile)
+	section, err := cfg.GetSection(fmt.Sprintf("profile %s", profile))
 	if err != nil {
 		return nil, fmt.Errorf("unable to read profile: %w", err)
 	}
