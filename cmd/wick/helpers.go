@@ -365,9 +365,11 @@ func writeProfile(sectionName, serializerStr, filePath string, clientInfo *core.
 		{"ticket", clientInfo.Ticket},
 		{"secret", clientInfo.Secret},
 	} {
-		// create new key in the section
-		if _, err = section.NewKey(data.key, data.value); err != nil {
-			return fmt.Errorf("error in creating key: %w", err)
+		if data.value != "" {
+			// create new key in the section
+			if _, err = section.NewKey(data.key, data.value); err != nil {
+				return fmt.Errorf("error in creating key: %w", err)
+			}
 		}
 	}
 
