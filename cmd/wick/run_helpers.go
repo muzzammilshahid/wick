@@ -90,7 +90,7 @@ func invocationHandler(invoke, yield *argsKwargs) func(ctx context.Context,
 	}
 }
 
-// executeTasks execute all the tasks in compose
+// executeTasks execute all the tasks in compose.
 func executeTasks(compose Compose, producerSession, consumerSession *client.Client) error {
 	for _, task := range compose.Tasks {
 		switch task.Type {
