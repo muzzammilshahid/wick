@@ -37,6 +37,13 @@ var (
 	AskForInput         = askForInput
 	Read                = read
 
+	ExecuteTasks      = executeTasks
+	EqualArgsKwargs   = equalArgsKwargs
+	ValidateRegister  = validateRegister
+	ValidateCall      = validateCall
+	ValidateSubscribe = validateSubscribe
+	ValidatePublish   = validatePublish
+
 	Json    = jsonSerializer
 	Cbor    = cborSerializer
 	MsgPack = msgpackSerializer
@@ -45,6 +52,14 @@ var (
 	TicketAuth     = ticketAuth
 	WampCraAuth    = wampCraAuth
 	AnonymousAuth  = anonymousAuth
+
+	Register  = register
+	Call      = call
+	Subscribe = subscribe
+	Publish   = publish
 )
 
-type InputOption = inputOptions
+type (
+	InputOption = inputOptions
+	ArgsKwargs  = argsKwargs
+)
