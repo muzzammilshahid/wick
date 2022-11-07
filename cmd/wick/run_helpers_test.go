@@ -122,27 +122,27 @@ func TestRunTasks(t *testing.T) {
 
 	compose := main.Compose{
 		Version: "2.0",
-		Tasks: []main.Tasks{
-			{Name: "register a cool procedure", Type: main.Register, Procedure: testProcedure},
-			{Name: "register second procedure", Type: main.Register, Procedure: testProcedure1,
+		Tasks: []main.Task{
+			{Name: "register a cool procedure", Type: "register", Procedure: testProcedure},
+			{Name: "register second procedure", Type: "register", Procedure: testProcedure1,
 				Options: wamp.Dict{"invoke": "roundrobin"}, Yield: &main.ArgsKwargs{
 					Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"},
 				}, Invocation: &main.ArgsKwargs{Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"}}},
 
-			{Name: "call a procedure", Type: main.Call, Procedure: testProcedure1,
+			{Name: "call a procedure", Type: "call", Procedure: testProcedure1,
 				Result: &main.ArgsKwargs{Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"}}},
-			{Name: "call a procedure", Type: main.Call, Procedure: testProcedure1,
+			{Name: "call a procedure", Type: "call", Procedure: testProcedure1,
 				Result:     &main.ArgsKwargs{Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"}},
 				Parameters: &main.ArgsKwargs{Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"}}},
 
-			{Name: "Subscribe to a topic", Type: main.Subscribe, Topic: testTopic},
-			{Name: "Subscribe to second topic", Type: main.Subscribe, Topic: testTopic1,
+			{Name: "Subscribe to a topic", Type: "subscribe", Topic: testTopic},
+			{Name: "Subscribe to second topic", Type: "subscribe", Topic: testTopic1,
 				Options: wamp.Dict{"match": "wildcard"}, Event: &main.ArgsKwargs{
 					Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"},
 				}},
 
-			{Name: "publish to topic", Type: main.Publish, Topic: testTopic1},
-			{Name: "publish to topic", Type: main.Publish, Topic: testTopic1,
+			{Name: "publish to topic", Type: "publish", Topic: testTopic1},
+			{Name: "publish to topic", Type: "publish", Topic: testTopic1,
 				Parameters: &main.ArgsKwargs{Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"}}},
 		},
 	}
@@ -152,49 +152,49 @@ func TestRunTasks(t *testing.T) {
 	for _, invalidCompose := range []main.Compose{
 		{
 			Version: "2.0",
-			Tasks: []main.Tasks{
-				{Name: "register a cool procedure", Type: main.Register, Procedure: testProcedure, Topic: testTopic1},
+			Tasks: []main.Task{
+				{Name: "register a cool procedure", Type: "register", Procedure: testProcedure, Topic: testTopic1},
 			},
 		},
 		{
 			Version: "2.0",
-			Tasks: []main.Tasks{
-				{Name: "register second procedure", Type: main.Register, Procedure: testProcedure1,
+			Tasks: []main.Task{
+				{Name: "register second procedure", Type: "register", Procedure: testProcedure1,
 					Options: wamp.Dict{"invoke": "roundrobin"}, Yield: &main.ArgsKwargs{
 						Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"},
 					}, Event: &main.ArgsKwargs{Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"}}},
 			}},
 		{
 			Version: "2.0",
-			Tasks: []main.Tasks{
-				{Name: "call a procedure", Type: main.Call, Procedure: testProcedure1,
+			Tasks: []main.Task{
+				{Name: "call a procedure", Type: "call", Procedure: testProcedure1,
 					Yield: &main.ArgsKwargs{Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"}}},
 			}},
 		{
 			Version: "2.0",
-			Tasks: []main.Tasks{
-				{Name: "call a procedure", Type: main.Call, Procedure: testProcedure1,
+			Tasks: []main.Task{
+				{Name: "call a procedure", Type: "call", Procedure: testProcedure1,
 					Result:     &main.ArgsKwargs{Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"}},
 					Invocation: &main.ArgsKwargs{Args: wamp.List{"Hello"}, Kwargs: wamp.Dict{"key": "value"}}},
 			}},
 		{
 			Version: "2.0",
-			Tasks: []main.Tasks{
+			Tasks: []main.Task{
 				{Name: "Subscribe to a topic", Type: "hello", Procedure: testTopic},
 			}},
 		{
 			Version: "2.0",
-			Tasks: []main.Tasks{{Name: "Subscribe to second topic", Topic: testTopic1,
+			Tasks: []main.Task{{Name: "Subscribe to second topic", Topic: testTopic1,
 				Options: wamp.Dict{"match": "wildcard"}, Event: &main.ArgsKwargs{
 					Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"},
 				}},
 			}},
 		{
 			Version: "2.0",
-			Tasks:   []main.Tasks{{Name: "publish to topic", Type: main.Call, Topic: testProcedure1}}},
+			Tasks:   []main.Task{{Name: "publish to topic", Type: "call", Topic: testProcedure1}}},
 		{
 			Version: "2.0",
-			Tasks: []main.Tasks{{Name: "publish to topic", Procedure: testProcedure1,
+			Tasks: []main.Task{{Name: "publish to topic", Procedure: testProcedure1,
 				Parameters: &main.ArgsKwargs{Args: wamp.List{"Hello", "ok"}, Kwargs: wamp.Dict{"key": "value"}}}}},
 	} {
 		err = main.ExecuteTasks(invalidCompose, producerSession, consumerSession)
@@ -215,13 +215,13 @@ func TestValidateRegister(t *testing.T) {
 		errorText  string
 	}{
 		{testProcedure, testTopic1, nil, nil, nil,
-			"topic is not required for register"},
+			"topic must not be set"},
 		{testProcedure, "", &main.ArgsKwargs{}, nil, nil,
-			"event is not required for register"},
+			"event must not be set"},
 		{testProcedure, "", nil, &main.ArgsKwargs{}, nil,
-			"result is not required for register"},
+			"result must not be set"},
 		{testProcedure, "", nil, nil, &main.ArgsKwargs{},
-			"parameters are not required for register"},
+			"parameters must not be set"},
 	} {
 		err = main.ValidateRegister(invalidData.procedure, invalidData.topic, invalidData.event,
 			invalidData.result, invalidData.parameters)
@@ -243,13 +243,13 @@ func TestValidateCall(t *testing.T) {
 		errorText  string
 	}{
 		{testProcedure, "foo", nil, nil, nil,
-			"topic is not required for call"},
+			"topic must not be set"},
 		{testProcedure, "", &main.ArgsKwargs{}, nil, nil,
-			"event is not required for call"},
+			"event must not be set"},
 		{testProcedure, "", nil, &main.ArgsKwargs{}, nil,
-			"yield is not required for call"},
+			"yield must not be set"},
 		{testProcedure, "", nil, nil, &main.ArgsKwargs{},
-			"invocation are not required for call"},
+			"invocation must not be set"},
 	} {
 		err = main.ValidateCall(invalidData.procedure, invalidData.topic, invalidData.event,
 			invalidData.yield, invalidData.invocation)
@@ -272,15 +272,15 @@ func TestValidateSubscribe(t *testing.T) {
 		errorText  string
 	}{
 		{testTopic, "foo", nil, nil, nil, nil,
-			"procedure is not required for subscribe"},
+			"procedure must not be set"},
 		{testTopic, "", &main.ArgsKwargs{}, nil, nil, nil,
-			"result is not required for subscribe"},
+			"result must not be set"},
 		{testTopic, "", nil, &main.ArgsKwargs{}, nil, nil,
-			"yield is not required for subscribe"},
+			"yield must not be set"},
 		{testTopic, "", nil, nil, &main.ArgsKwargs{}, nil,
-			"invocation is not required for subscribe"},
+			"invocation must not be set"},
 		{testTopic, "", nil, nil, nil, &main.ArgsKwargs{},
-			"parameters are not required for subscribe"},
+			"parameters must not be set"},
 	} {
 		err = main.ValidateSubscribe(invalidData.topic, invalidData.procedure, invalidData.result,
 			invalidData.yield, invalidData.invocation, invalidData.parameters)
@@ -303,15 +303,15 @@ func TestValidatePublish(t *testing.T) {
 		errorText  string
 	}{
 		{testTopic, "foo", nil, nil, nil, nil,
-			"procedure is not required for publish"},
+			"procedure must not be set"},
 		{testTopic, "", &main.ArgsKwargs{}, nil, nil, nil,
-			"event is not required for publish"},
+			"event must not be set"},
 		{testTopic, "", nil, &main.ArgsKwargs{}, nil, nil,
-			"yield is not required for publish"},
+			"yield must not be set"},
 		{testTopic, "", nil, nil, &main.ArgsKwargs{}, nil,
-			"invocation is not required for publish"},
+			"invocation must not be set"},
 		{testTopic, "", nil, nil, nil, &main.ArgsKwargs{},
-			"result is not required for publish"},
+			"result must not be set"},
 	} {
 		err = main.ValidatePublish(invalidData.topic, invalidData.procedure, invalidData.event,
 			invalidData.yield, invalidData.invocation, invalidData.result)

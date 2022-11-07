@@ -28,17 +28,12 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/gammazero/nexus/v3/client"
 	"github.com/gammazero/nexus/v3/wamp"
 	log "github.com/sirupsen/logrus"
-)
-
-const (
-	register  = "register"
-	call      = "call"
-	subscribe = "subscribe"
-	publish   = "publish"
+	"golang.org/x/exp/slices"
 )
 
 type argsKwargs struct {
@@ -47,12 +42,13 @@ type argsKwargs struct {
 }
 
 type Compose struct {
-	Version string  `yaml:"version"`
-	Tasks   []Tasks `yaml:"tasks"`
+	Version string `yaml:"version"`
+	Tasks   []Task `yaml:"tasks"`
 }
 
-type Tasks struct {
-	Name       string      `yaml:"name"`
+type Task struct {
+	Name string `yaml:"name"`
+	// Type describes the task's type, one of "register", "subscribe", "call", "publish"
 	Type       string      `yaml:"type"`
 	Options    wamp.Dict   `yaml:"options"`
 	Procedure  string      `yaml:"procedure"`
@@ -65,11 +61,7 @@ type Tasks struct {
 }
 
 func equalArgsKwargs(list1, list2 wamp.List, dict1, dict2 wamp.Dict) bool {
-	if isEqual := reflect.DeepEqual(list1, list2); !isEqual {
-		return false
-	}
-
-	return reflect.DeepEqual(dict1, dict2)
+	return reflect.DeepEqual(list1, list2) && reflect.DeepEqual(dict1, dict2)
 }
 
 func invocationHandler(invoke, yield *argsKwargs) func(ctx context.Context,
@@ -92,22 +84,26 @@ func invocationHandler(invoke, yield *argsKwargs) func(ctx context.Context,
 
 // executeTasks execute all the tasks in compose.
 func executeTasks(compose Compose, producerSession, consumerSession *client.Client) error {
+	supportedTypes := []string{"register", "call", "subscribe", "publish"}
 	for _, task := range compose.Tasks {
+		if !slices.Contains(supportedTypes, task.Type) {
+			return fmt.Errorf("unsupported task type %q, expected one of: %v", task.Type, strings.Join(supportedTypes, ", "))
+		}
 		switch task.Type {
-		case register:
+		case "register":
 			if err := validateRegister(task.Procedure, task.Topic, task.Event, task.Result, task.Parameters); err != nil {
-				return err
+				return fmt.Errorf("invalid 'register' definition: %w", err)
 			}
 			yield := task.Yield
 			invoke := task.Invocation
 			if err := producerSession.Register(task.Procedure, invocationHandler(invoke, yield), task.Options); err != nil {
 				return err
 			}
-			log.Printf("Register to procedure %s", task.Procedure)
+			log.Printf("Registered procedure %s", task.Procedure)
 
-		case call:
+		case "call":
 			if err := validateCall(task.Procedure, task.Topic, task.Event, task.Yield, task.Invocation); err != nil {
-				return err
+				return fmt.Errorf("invalid 'call' definition: %w", err)
 			}
 			var result *wamp.Result
 			var err error
@@ -129,30 +125,31 @@ func executeTasks(compose Compose, producerSession, consumerSession *client.Clie
 				}
 			}
 			log.Printf("Called procedure %s", task.Procedure)
-			log.Debugf("call results: args:%s kwargs%s", result.Arguments, result.ArgumentsKw)
+			log.Printf("call results: args:%s kwargs:%s", result.Arguments, result.ArgumentsKw)
 
-		case subscribe:
+		case "subscribe":
 			if err := validateSubscribe(task.Topic, task.Procedure, task.Result, task.Yield, task.Invocation,
 				task.Parameters); err != nil {
-				return err
+				return fmt.Errorf("invalid 'subscribe' definition: %w", err)
 			}
 			e := task.Event
-			if err := producerSession.Subscribe(task.Topic, func(event *wamp.Event) {
+			err := producerSession.Subscribe(task.Topic, func(event *wamp.Event) {
 				if e != nil {
 					if isEqual := equalArgsKwargs(e.Args, event.Arguments, e.Kwargs, event.ArgumentsKw); !isEqual {
 						log.Errorf("actual event is not equal to expected event: expected=%v %v actual=%s %s",
 							e.Args, e.Kwargs, event.Arguments, event.ArgumentsKw)
 					}
 				}
-			}, task.Options); err != nil {
+			}, task.Options)
+			if err != nil {
 				return err
 			}
-			log.Printf("Subscribe to topic %s", task.Topic)
+			log.Printf("Subscribed to topic %s", task.Topic)
 
-		case publish:
+		case "publish":
 			if err := validatePublish(task.Topic, task.Procedure, task.Event, task.Yield, task.Invocation,
 				task.Result); err != nil {
-				return err
+				return fmt.Errorf("invalid 'publish' definition: %w", err)
 			}
 
 			var err error
@@ -164,11 +161,7 @@ func executeTasks(compose Compose, producerSession, consumerSession *client.Clie
 			if err != nil {
 				return err
 			}
-			log.Printf("Publish to topic %s", task.Topic)
-
-		default:
-			return fmt.Errorf("%s not supported: supported types are %s, %s, %s, %s",
-				task.Type, register, call, subscribe, publish)
+			log.Printf("Published to topic %s", task.Topic)
 		}
 	}
 	return nil
@@ -179,16 +172,16 @@ func validateRegister(procedure, topic string, event, result, parameters *argsKw
 		return fmt.Errorf("procedure is required for register")
 	}
 	if topic != "" {
-		return fmt.Errorf("topic is not required for register")
+		return fmt.Errorf("topic must not be set")
 	}
 	if event != nil {
-		return fmt.Errorf("event is not required for register")
+		return fmt.Errorf("event must not be set")
 	}
 	if result != nil {
-		return fmt.Errorf("result is not required for register")
+		return fmt.Errorf("result must not be set")
 	}
 	if parameters != nil {
-		return fmt.Errorf("parameters are not required for register")
+		return fmt.Errorf("parameters must not be set")
 	}
 	return nil
 }
@@ -198,16 +191,16 @@ func validateCall(procedure, topic string, event, yield, invocation *argsKwargs)
 		return fmt.Errorf("procedure is required for call")
 	}
 	if topic != "" {
-		return fmt.Errorf("topic is not required for call")
+		return fmt.Errorf("topic must not be set")
 	}
 	if event != nil {
-		return fmt.Errorf("event is not required for call")
+		return fmt.Errorf("event must not be set")
 	}
 	if yield != nil {
-		return fmt.Errorf("yield is not required for call")
+		return fmt.Errorf("yield must not be set")
 	}
 	if invocation != nil {
-		return fmt.Errorf("invocation are not required for call")
+		return fmt.Errorf("invocation must not be set")
 	}
 	return nil
 }
@@ -217,19 +210,19 @@ func validateSubscribe(topic, procedure string, result, yield, invocation, param
 		return fmt.Errorf("topic is required for subscribe")
 	}
 	if procedure != "" {
-		return fmt.Errorf("procedure is not required for subscribe")
+		return fmt.Errorf("procedure must not be set")
 	}
 	if result != nil {
-		return fmt.Errorf("result is not required for subscribe")
+		return fmt.Errorf("result must not be set")
 	}
 	if yield != nil {
-		return fmt.Errorf("yield is not required for subscribe")
+		return fmt.Errorf("yield must not be set")
 	}
 	if invocation != nil {
-		return fmt.Errorf("invocation is not required for subscribe")
+		return fmt.Errorf("invocation must not be set")
 	}
 	if parameters != nil {
-		return fmt.Errorf("parameters are not required for subscribe")
+		return fmt.Errorf("parameters must not be set")
 	}
 	return nil
 }
@@ -239,19 +232,19 @@ func validatePublish(topic, procedure string, event, yield, invocation, result *
 		return fmt.Errorf("topic is required for publish")
 	}
 	if procedure != "" {
-		return fmt.Errorf("procedure is not required for publish")
+		return fmt.Errorf("procedure must not be set")
 	}
 	if result != nil {
-		return fmt.Errorf("result is not required for publish")
+		return fmt.Errorf("result must not be set")
 	}
 	if yield != nil {
-		return fmt.Errorf("yield is not required for publish")
+		return fmt.Errorf("yield must not be set")
 	}
 	if invocation != nil {
-		return fmt.Errorf("invocation is not required for publish")
+		return fmt.Errorf("invocation must not be set")
 	}
 	if event != nil {
-		return fmt.Errorf("event is not required for publish")
+		return fmt.Errorf("event must not be set")
 	}
 	return nil
 }

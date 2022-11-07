@@ -52,11 +52,6 @@ var (
 	TicketAuth     = ticketAuth
 	WampCraAuth    = wampCraAuth
 	AnonymousAuth  = anonymousAuth
-
-	Register  = register
-	Call      = call
-	Subscribe = subscribe
-	Publish   = publish
 )
 
 type (
