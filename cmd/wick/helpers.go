@@ -248,8 +248,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 		clientInfo.Realm = inputRealm
 	}
 
-	var serializerStr string
-	if serializer == "json" {
+	if serializer == "json" || serializer == "" {
 		inputSerializer, err := askForInput(reader, writer, &inputOptions{
 			Query:        "Enter serializer(supported are 'json', 'msgpack', 'cbor')",
 			DefaultVal:   "json",
@@ -258,9 +257,9 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 			ValidateFunc: validateSerializer,
 		})
 		if err != nil {
-			return nil, serializerStr, err
+			return nil, serializer, err
 		}
-		serializerStr = inputSerializer
+		serializer = inputSerializer
 	}
 
 	if clientInfo.Authid == "" {
@@ -272,7 +271,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 			ValidateFunc: nil,
 		})
 		if err != nil {
-			return nil, serializerStr, err
+			return nil, serializer, err
 		}
 		clientInfo.Authid = inputAuthid
 	}
@@ -287,7 +286,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 		})
 		clientInfo.AuthMethod = inputAuthMethod
 		if err != nil {
-			return nil, serializerStr, err
+			return nil, serializer, err
 		}
 	}
 
@@ -302,7 +301,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 				ValidateFunc: nil,
 			})
 			if err != nil {
-				return nil, serializerStr, err
+				return nil, serializer, err
 			}
 			clientInfo.Ticket = inputTicket
 		}
@@ -316,7 +315,7 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 				ValidateFunc: nil,
 			})
 			if err != nil {
-				return nil, serializerStr, err
+				return nil, serializer, err
 			}
 			clientInfo.Secret = inputSecret
 		}
@@ -330,13 +329,13 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 				ValidateFunc: validatePrivateKey,
 			})
 			if err != nil {
-				return nil, serializerStr, err
+				return nil, serializer, err
 			}
 			clientInfo.PrivateKey = inputPrivateKey
 		}
 	}
 
-	return clientInfo, serializerStr, nil
+	return clientInfo, serializer, nil
 }
 
 // writeProfile write section in ini file.
