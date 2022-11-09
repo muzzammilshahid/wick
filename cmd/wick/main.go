@@ -111,8 +111,8 @@ type cmd struct {
 
 	configure *kingpin.CmdClause
 
-	run      *kingpin.CmdClause
-	filePath *string
+	run          *kingpin.CmdClause
+	runTasksFile *string
 }
 
 func parseCmd() (*cmd, string) {
@@ -234,8 +234,8 @@ a string, send value in quotes e.g."'1'" or '"true"'. (May be provided multiple 
 
 		configure: kingpin.Command("configure", "Configure profiles."),
 
-		run:      runCommand,
-		filePath: runCommand.Flag("file-path", "Enter the file path to execute.").Short('f').Default("./wick.yaml").String(),
+		run:          runCommand,
+		runTasksFile: runCommand.Flag("file-path", "Enter the file path to execute.").Short('f').Default("wick.yaml").String(),
 	}
 	return c, kingpin.Parse()
 }
@@ -610,7 +610,7 @@ func main() {
 		}
 
 	case c.run.FullCommand():
-		yamlFile, err := os.ReadFile(*c.filePath)
+		yamlFile, err := os.ReadFile(*c.runTasksFile)
 		if err != nil {
 			log.Fatalln(err)
 		}

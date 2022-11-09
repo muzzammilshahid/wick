@@ -34,6 +34,8 @@ import (
 	"github.com/gammazero/nexus/v3/wamp"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
+
+	"github.com/s-things/wick/core"
 )
 
 type argsKwargs struct {
@@ -138,6 +140,13 @@ func executeTasks(compose Compose, producerSession, consumerSession *client.Clie
 					if isEqual := equalArgsKwargs(e.Args, event.Arguments, e.Kwargs, event.ArgumentsKw); !isEqual {
 						log.Errorf("actual event is not equal to expected event: expected=%v %v actual=%s %s",
 							e.Args, e.Kwargs, event.Arguments, event.ArgumentsKw)
+					}
+				} else {
+					output, err := core.ArgsKWArgs(event.Arguments, event.ArgumentsKw, event.Details)
+					if err != nil {
+						log.Errorln(err)
+					} else {
+						fmt.Println(output)
 					}
 				}
 			}, task.Options)
