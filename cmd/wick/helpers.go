@@ -293,41 +293,47 @@ func getInputFromUser(serializer string, clientInfo *core.ClientInfo) (*core.Cli
 
 	switch clientInfo.AuthMethod {
 	case ticketAuth:
-		inputTicket, err := askForInput(reader, writer, &inputOptions{
-			Query:        "Enter ticket",
-			DefaultVal:   "",
-			Required:     true,
-			Loop:         true,
-			ValidateFunc: nil,
-		})
-		if err != nil {
-			return nil, serializerStr, err
+		if clientInfo.Ticket == "" {
+			inputTicket, err := askForInput(reader, writer, &inputOptions{
+				Query:        "Enter ticket",
+				DefaultVal:   "",
+				Required:     true,
+				Loop:         true,
+				ValidateFunc: nil,
+			})
+			if err != nil {
+				return nil, serializerStr, err
+			}
+			clientInfo.Ticket = inputTicket
 		}
-		clientInfo.Ticket = inputTicket
 	case wampCraAuth:
-		inputSecret, err := askForInput(reader, writer, &inputOptions{
-			Query:        "Enter secret",
-			DefaultVal:   "",
-			Required:     true,
-			Loop:         true,
-			ValidateFunc: nil,
-		})
-		if err != nil {
-			return nil, serializerStr, err
+		if clientInfo.Secret == "" {
+			inputSecret, err := askForInput(reader, writer, &inputOptions{
+				Query:        "Enter secret",
+				DefaultVal:   "",
+				Required:     true,
+				Loop:         true,
+				ValidateFunc: nil,
+			})
+			if err != nil {
+				return nil, serializerStr, err
+			}
+			clientInfo.Secret = inputSecret
 		}
-		clientInfo.Secret = inputSecret
 	case cryptosignAuth:
-		inputPrivateKey, err := askForInput(reader, writer, &inputOptions{
-			Query:        "Enter private-key",
-			DefaultVal:   "",
-			Required:     true,
-			Loop:         true,
-			ValidateFunc: validatePrivateKey,
-		})
-		if err != nil {
-			return nil, serializerStr, err
+		if clientInfo.PrivateKey == "" {
+			inputPrivateKey, err := askForInput(reader, writer, &inputOptions{
+				Query:        "Enter private-key",
+				DefaultVal:   "",
+				Required:     true,
+				Loop:         true,
+				ValidateFunc: validatePrivateKey,
+			})
+			if err != nil {
+				return nil, serializerStr, err
+			}
+			clientInfo.PrivateKey = inputPrivateKey
 		}
-		clientInfo.PrivateKey = inputPrivateKey
 	}
 
 	return clientInfo, serializerStr, nil
