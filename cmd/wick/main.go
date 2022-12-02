@@ -105,6 +105,7 @@ type cmd struct {
 	concurrentCalls  *int
 	callSessionCount *int
 	keepaliveCall    *int
+	readFile         *bool
 
 	keyGen     *kingpin.CmdClause
 	saveToFile *bool
@@ -228,6 +229,8 @@ a string, send value in quotes e.g."'1'" or '"true"'. (May be provided multiple 
 			Default("1").Int(),
 		keepaliveCall: callCommand.Flag("keepalive", "Interval between websocket pings.").
 			Default("0").Int(),
+		readFile: callCommand.Flag("read-file", "use ':=' followed by file path to send file bytes in args and kwargs").
+			Short('f').Bool(),
 
 		keyGen:     keyGenCommand,
 		saveToFile: keyGenCommand.Flag("output-file", "Write keypair to file.").Short('O').Bool(),
@@ -386,7 +389,6 @@ func main() {
 			for _, session := range sessions {
 				<-session.Done()
 			}
-			log.Print("router gone")
 			allSessionsDoneC <- struct{}{}
 		}()
 
@@ -561,7 +563,7 @@ func main() {
 			sess := session
 			wp.Submit(func() {
 				if err = core.Call(sess, *c.callProcedure, *c.callArgs, *c.callKeywordArgs, *c.logCallTime,
-					*c.repeatCount, *c.delayCall, *c.concurrentCalls, *c.callOptions); err != nil {
+					*c.repeatCount, *c.delayCall, *c.concurrentCalls, *c.callOptions, *c.readFile); err != nil {
 					log.Fatalln(err)
 				}
 			})

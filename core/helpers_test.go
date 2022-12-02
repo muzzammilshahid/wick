@@ -25,6 +25,8 @@
 package core_test
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/gammazero/nexus/v3/wamp"
@@ -146,55 +148,114 @@ func TestUrlSanitization(t *testing.T) {
 }
 
 func TestListToWampList(t *testing.T) {
-	inputList := []string{
-		"string", "1", "1.1", "true",
-		`"123"`, `'123'`, `"true"`,
-		// JSON array, object, array of objects
-		`["group_1","group_2", 1.1, true]`,
-		`{"firstKey":"value", "secondKey":2.1}`,
-		`[{"firstKey":"value", "secondKey":2.1}, {"firstKey":"value", "secondKey":2.1}]`,
-	}
+	file, err := os.CreateTemp("", "foo.bar")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Remove(file.Name()) })
 
-	expectedList := wamp.List{
-		"string", 1, 1.1, true,
-		"123", "123", "true",
-		// converted from JSON
-		[]interface{}{"group_1", "group_2", 1.1, true},
-		map[string]interface{}{"firstKey": "value", "secondKey": 2.1},
-		[]map[string]interface{}{
-			{"firstKey": "value", "secondKey": 2.1},
-			{"firstKey": "value", "secondKey": 2.1},
+	fileBytes, err := os.ReadFile(file.Name())
+	require.NoError(t, err)
+
+	for _, data := range []struct {
+		inputList    []string
+		expectedList wamp.List
+		checkFile    bool
+	}{
+		{[]string{
+			"string", "1", "1.1", "true",
+			`"123"`, `'123'`, `"true"`,
+			// JSON array, object, array of objects
+			`["group_1","group_2", 1.1, true]`,
+			`{"firstKey":"value", "secondKey":2.1}`,
+			`[{"firstKey":"value", "secondKey":2.1}, {"firstKey":"value", "secondKey":2.1}]`,
+		}, wamp.List{
+			"string", 1, 1.1, true,
+			"123", "123", "true",
+			// converted from JSON
+			[]interface{}{"group_1", "group_2", 1.1, true},
+			map[string]interface{}{"firstKey": "value", "secondKey": 2.1},
+			[]map[string]interface{}{
+				{"firstKey": "value", "secondKey": 2.1},
+				{"firstKey": "value", "secondKey": 2.1},
+			}}, false,
 		},
+		{
+			[]string{":=/foo/bar"},
+			wamp.List{":=/foo/bar"},
+			false,
+		},
+		{
+			[]string{fmt.Sprintf(":=%s", file.Name())},
+			wamp.List{fileBytes},
+			true,
+		},
+	} {
+		wampList, err := core.ListToWampList(data.inputList, data.checkFile)
+		require.NoError(t, err)
+		assert.Equal(t, data.expectedList, wampList, "error in list conversion")
 	}
-
-	wampList := core.ListToWampList(inputList)
-	assert.Equal(t, expectedList, wampList, "error in list conversion")
 }
 
 func TestDictToWampDict(t *testing.T) {
-	inputDict := map[string]string{
-		"string": "string", "int": "1", "float": "1.1", "bool": "true",
-		"stringNumber": `""123"`, "stringFloat": `'1.23'`, "stringBool": `"true"`,
-		"list":     `["group_1","group_2", 1.1, true]`,
-		"json":     `{"firstKey":"value", "secondKey":2.2}`,
-		"jsonList": `[{"firstKey":"value", "secondKey":2.2}, {"firstKey":"value", "secondKey":2.2}]`,
-	}
+	file, err := os.CreateTemp("", "foo.bar")
+	require.NoError(t, err)
+	t.Cleanup(func() { os.Remove(file.Name()) })
 
-	expectedDict := wamp.Dict{
-		"string": "string", "int": 1, "float": 1.1, "bool": true,
-		"stringNumber": `"123`, "stringFloat": "1.23", "stringBool": "true",
-		"list": []interface{}{
-			"group_1", "group_2", 1.1, true,
-		},
-		"json": map[string]interface{}{"firstKey": "value", "secondKey": 2.2},
-		"jsonList": []map[string]interface{}{
-			{"firstKey": "value", "secondKey": 2.2},
-			{"firstKey": "value", "secondKey": 2.2},
-		},
-	}
+	fileBytes, err := os.ReadFile(file.Name())
+	require.NoError(t, err)
 
-	wampDict := core.DictToWampDict(inputDict)
-	assert.Equal(t, expectedDict, wampDict, "error in dict conversion")
+	for _, data := range []struct {
+		inputDict    map[string]string
+		expectedDict wamp.Dict
+		checkFile    bool
+	}{
+		{map[string]string{
+			"string": "string", "int": "1", "float": "1.1", "bool": "true",
+			"stringNumber": `""123"`, "stringFloat": `'1.23'`, "stringBool": `"true"`,
+			"list":     `["group_1","group_2", 1.1, true]`,
+			"json":     `{"firstKey":"value", "secondKey":2.2}`,
+			"jsonList": `[{"firstKey":"value", "secondKey":2.2}, {"firstKey":"value", "secondKey":2.2}]`,
+		}, wamp.Dict{
+			"string": "string", "int": 1, "float": 1.1, "bool": true,
+			"stringNumber": `"123`, "stringFloat": "1.23", "stringBool": "true",
+			"list": []interface{}{
+				"group_1", "group_2", 1.1, true,
+			},
+			"json": map[string]interface{}{"firstKey": "value", "secondKey": 2.2},
+			"jsonList": []map[string]interface{}{
+				{"firstKey": "value", "secondKey": 2.2},
+				{"firstKey": "value", "secondKey": 2.2},
+			},
+		}, false},
+		{
+			map[string]string{"foo": ":=/foo/bar"},
+			wamp.Dict{"foo": ":=/foo/bar"},
+			false,
+		},
+		{
+			map[string]string{"foo": fmt.Sprintf(":=%s", file.Name())},
+			wamp.Dict{"foo": fileBytes},
+			true,
+		},
+	} {
+		wampDict, err := core.DictToWampDict(data.inputDict, data.checkFile)
+		require.NoError(t, err)
+		assert.Equal(t, data.expectedDict, wampDict, "error in dict conversion")
+	}
+}
+
+func TestGetPathIfFile(t *testing.T) {
+	for _, data := range []struct {
+		input          string
+		expectedString string
+		expectedBool   bool
+	}{
+		{"foo", "", false},
+		{":=/foo/bar", "/foo/bar", true},
+	} {
+		path, isFile := core.GetPathIfFile(data.input)
+		assert.Equal(t, data.expectedString, path)
+		assert.Equal(t, data.expectedBool, isFile)
+	}
 }
 
 func TestEncodeToJson(t *testing.T) {

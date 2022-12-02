@@ -108,8 +108,12 @@ func Subscribe(session *client.Client, topic string, subscribeOptions map[string
 		startTime = time.Now().UnixMilli()
 	}
 
+	wampDictOptions, err := dictToWampDict(subscribeOptions, false)
+	if err != nil {
+		return err
+	}
 	// Subscribe to topic.
-	if err := session.Subscribe(topic, eventHandler, dictToWampDict(subscribeOptions)); err != nil {
+	if err := session.Subscribe(topic, eventHandler, wampDictOptions); err != nil {
 		return err
 	}
 	if logSubscribeTime {
@@ -142,12 +146,24 @@ func Publish(session *client.Client, topic string, args []string, kwargs map[str
 		startTime = time.Now().UnixMilli()
 	}
 
+	wampList, err := listToWampList(args, false)
+	if err != nil {
+		return err
+	}
+	wampDictKwargs, err := dictToWampDict(kwargs, false)
+	if err != nil {
+		return err
+	}
+	wampDictOption, err := dictToWampDict(publishOptions, false)
+	if err != nil {
+		return err
+	}
 	wp := workerpool.New(concurrency)
 	resC := make(chan error, repeatPublish)
 	for i := 0; i < repeatPublish; i++ {
 		wp.Submit(func() {
-			err := actualPublish(session, topic, listToWampList(args), dictToWampDict(kwargs),
-				delayPublish, dictToWampDict(publishOptions))
+			err := actualPublish(session, topic, wampList, wampDictKwargs,
+				delayPublish, wampDictOption)
 			resC <- err
 		})
 	}
@@ -181,8 +197,12 @@ func Register(session *client.Client, procedure string, command string, delay in
 	if logRegisterTime {
 		startTime = time.Now().UnixMilli()
 	}
+	wampDictOptions, err := dictToWampDict(registerOptions, false)
+	if err != nil {
+		return err
+	}
 	//Register a procedure
-	if err := session.Register(procedure, invocationHandler, dictToWampDict(registerOptions)); err != nil {
+	if err := session.Register(procedure, invocationHandler, wampDictOptions); err != nil {
 		return err
 	}
 	if logRegisterTime {
@@ -242,20 +262,32 @@ func actuallyCall(session *client.Client, procedure string, args wamp.List, kwar
 	return result, nil
 }
 
-func Call(session *client.Client, procedure string, args []string, kwargs map[string]string,
-	logCallTime bool, repeatCount int, delayCall int, concurrency int, callOptions map[string]string) error {
+func Call(session *client.Client, procedure string, args []string, kwargs map[string]string, logCallTime bool,
+	repeatCount int, delayCall int, concurrency int, callOptions map[string]string, checkFile bool) error {
 	var startTime int64
 	if logCallTime {
 		startTime = time.Now().UnixMilli()
 	}
 
+	wampListArgs, err := listToWampList(args, checkFile)
+	if err != nil {
+		return err
+	}
+	wampDictKwargs, err := dictToWampDict(kwargs, checkFile)
+	if err != nil {
+		return err
+	}
+	wampDictOptions, err := dictToWampDict(callOptions, false)
+	if err != nil {
+		return err
+	}
 	wp := workerpool.New(concurrency)
 	resC := make(chan error, repeatCount)
 
 	for i := 0; i < repeatCount; i++ {
 		wp.Submit(func() {
-			_, err := actuallyCall(session, procedure, listToWampList(args), dictToWampDict(kwargs),
-				delayCall, dictToWampDict(callOptions))
+			_, err := actuallyCall(session, procedure, wampListArgs, wampDictKwargs,
+				delayCall, wampDictOptions)
 			resC <- err
 		})
 	}

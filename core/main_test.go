@@ -167,7 +167,7 @@ func TestCallDelayRepeatConcurrency(t *testing.T) {
 
 	t.Run("TestCallDelay", func(t *testing.T) {
 		go func() {
-			err = core.Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, 1, 1000, 0, nil)
+			err = core.Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, 1, 1000, 0, nil, false)
 			require.NoError(t, err, fmt.Sprintf("error in calling procedure: %s\n", err))
 		}()
 		require.Equal(t, 0, iterator, "procedure called without delay")
@@ -177,7 +177,7 @@ func TestCallDelayRepeatConcurrency(t *testing.T) {
 	})
 
 	t.Run("TestCallRepeat", func(t *testing.T) {
-		err = core.Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, repeatCount, 0, 0, nil)
+		err = core.Call(sessionCall, testProcedure, []string{"Hello", "1"}, nil, false, repeatCount, 0, 0, nil, false)
 		require.NoError(t, err, fmt.Sprintf("error in calling procedure: %s\n", err))
 		require.Equal(t, 1000, iterator, "procedure not correctly called repeatedly")
 	})

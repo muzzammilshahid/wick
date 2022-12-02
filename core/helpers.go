@@ -30,6 +30,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -59,11 +60,19 @@ const (
 	thirtyTwoInt = 32
 )
 
-func listToWampList(args []string) wamp.List {
+func getPathIfFile(arg string) (path string, isFile bool) {
+	split := strings.SplitN(arg, ":=", 2) //nolint:gomnd
+	if len(split) == 2 {                  //nolint:gomnd
+		return split[1], true
+	}
+	return "", false
+}
+
+func listToWampList(args []string, checkFile bool) (wamp.List, error) {
 	var arguments wamp.List
 
 	if args == nil {
-		return wamp.List{}
+		return wamp.List{}, nil
 	}
 
 	for _, value := range args {
@@ -77,6 +86,17 @@ func listToWampList(args []string) wamp.List {
 		case strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`):
 			arguments = append(arguments, value[1:len(value)-1])
 		default:
+			if checkFile {
+				filePath, isFile := getPathIfFile(value)
+				if isFile {
+					fileBytes, err := os.ReadFile(filePath)
+					if err != nil {
+						return nil, err
+					}
+					arguments = append(arguments, fileBytes)
+					continue
+				}
+			}
 			if number, errNumber := strconv.Atoi(value); errNumber == nil {
 				arguments = append(arguments, number)
 			} else if float, errFloat := strconv.ParseFloat(value, sixtyFourInt); errFloat == nil {
@@ -95,10 +115,10 @@ func listToWampList(args []string) wamp.List {
 		}
 	}
 
-	return arguments
+	return arguments, nil
 }
 
-func dictToWampDict(kwargs map[string]string) wamp.Dict {
+func dictToWampDict(kwargs map[string]string, checkFile bool) (wamp.Dict, error) {
 	var keywordArguments wamp.Dict = make(map[string]interface{})
 
 	for key, value := range kwargs {
@@ -112,6 +132,17 @@ func dictToWampDict(kwargs map[string]string) wamp.Dict {
 		case strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`):
 			keywordArguments[key] = value[1 : len(value)-1]
 		default:
+			if checkFile {
+				filePath, isFile := getPathIfFile(value)
+				if isFile {
+					fileBytes, err := os.ReadFile(filePath)
+					if err != nil {
+						return nil, err
+					}
+					keywordArguments[key] = fileBytes
+					continue
+				}
+			}
 			if number, errNumber := strconv.Atoi(value); errNumber == nil {
 				keywordArguments[key] = number
 			} else if float, errFloat := strconv.ParseFloat(value, sixtyFourInt); errFloat == nil {
@@ -129,7 +160,7 @@ func dictToWampDict(kwargs map[string]string) wamp.Dict {
 			}
 		}
 	}
-	return keywordArguments
+	return keywordArguments, nil
 }
 
 func registerInvocationHandler(session *client.Client, procedure string, command string,
